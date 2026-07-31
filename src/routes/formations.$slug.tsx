@@ -1,13 +1,14 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, Check, Clock, MapPin, Users } from "lucide-react";
-import { formatDate, formatPrice, getCourse, modeLabel } from "@/data/courses";
+import { formatDate, formatPrice, getCourse, modeLabel, type Course } from "@/data/courses";
 
 export const Route = createFileRoute("/formations/$slug")({
-  loader: ({ params }) => {
+  loader: ({ params }): { course: Course } => {
     const course = getCourse(params.slug);
     if (!course) throw notFound();
     return { course };
   },
+
   head: ({ loaderData }) => {
     if (!loaderData) {
       return {
