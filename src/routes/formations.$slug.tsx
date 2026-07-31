@@ -30,7 +30,7 @@ export const Route = createFileRoute("/formations/$slug")({
 });
 
 function CourseDetail() {
-  const { course } = Route.useLoaderData();
+  const { course } = Route.useLoaderData() as { course: Course };
 
   return (
     <>
