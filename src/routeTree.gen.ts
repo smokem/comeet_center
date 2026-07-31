@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AProposRouteImport } from './routes/a-propos'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as FormationsIndexRouteImport } from './routes/formations.index'
 import { Route as FormationsSlugRouteImport } from './routes/formations.$slug'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const AProposRoute = AProposRouteImport.update({
   id: '/a-propos',
   path: '/a-propos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FormationsIndexRoute = FormationsIndexRouteImport.update({
@@ -38,12 +44,14 @@ const FormationsSlugRoute = FormationsSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
+  '/contact': typeof ContactRoute
   '/formations/$slug': typeof FormationsSlugRoute
   '/formations/': typeof FormationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
+  '/contact': typeof ContactRoute
   '/formations/$slug': typeof FormationsSlugRoute
   '/formations': typeof FormationsIndexRoute
 }
@@ -51,20 +59,29 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
+  '/contact': typeof ContactRoute
   '/formations/$slug': typeof FormationsSlugRoute
   '/formations/': typeof FormationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/a-propos' | '/formations/$slug' | '/formations/'
+  fullPaths:
+    '/' | '/a-propos' | '/contact' | '/formations/$slug' | '/formations/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/a-propos' | '/formations/$slug' | '/formations'
-  id: '__root__' | '/' | '/a-propos' | '/formations/$slug' | '/formations/'
+  to: '/' | '/a-propos' | '/contact' | '/formations/$slug' | '/formations'
+  id:
+    | '__root__'
+    | '/'
+    | '/a-propos'
+    | '/contact'
+    | '/formations/$slug'
+    | '/formations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AProposRoute: typeof AProposRoute
+  ContactRoute: typeof ContactRoute
   FormationsSlugRoute: typeof FormationsSlugRoute
   FormationsIndexRoute: typeof FormationsIndexRoute
 }
@@ -83,6 +100,13 @@ declare module '@tanstack/react-router' {
       path: '/a-propos'
       fullPath: '/a-propos'
       preLoaderRoute: typeof AProposRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/formations/': {
@@ -105,6 +129,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AProposRoute: AProposRoute,
+  ContactRoute: ContactRoute,
   FormationsSlugRoute: FormationsSlugRoute,
   FormationsIndexRoute: FormationsIndexRoute,
 }
