@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { CourseCard } from "@/components/site/CourseCard";
 import { categories, courses, levels, modeLabel, type Mode } from "@/data/courses";
 
-export const Route = createFileRoute("/formations")({
+export const Route = createFileRoute("/formations/")({
   head: () => ({
     meta: [
       { title: "Catalogue de formations — Co.meet Space" },
