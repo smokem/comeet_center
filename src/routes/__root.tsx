@@ -1,18 +1,28 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet,
-  Link,
-  createRootRouteWithContext,
-  useRouter,
-  HeadContent,
-  Scripts,
+    HeadContent,
+    Link,
+    Outlet,
+    Scripts,
+    createRootRouteWithContext,
+    useMatch,
+    useRouter,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
+import { ComingSoon } from "@/components/site/ComingSoon";
+import { Footer, Header } from "@/components/site/SiteChrome";
+import {
+    DEFAULT_SETTINGS,
+    getComingSoonSettings,
+    shouldShowComingSoon,
+    type ComingSoonSettings,
+} from "@/lib/settings-api";
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
-import { Header, Footer } from "@/components/site/SiteChrome";
 
+// ---------------------------------------------------------------------------
+// Error / 404
+// ---------------------------------------------------------------------------
 
 function NotFoundComponent() {
   return (
@@ -39,10 +49,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -54,10 +60,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
+            onClick={() => { router.invalidate(); reset(); }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Try again
@@ -74,12 +77,25 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Root route
+// ---------------------------------------------------------------------------
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  loader: async (): Promise<{ comingSoon: ComingSoonSettings }> => {
+    try {
+      const comingSoon = await getComingSoonSettings();
+      return { comingSoon };
+    } catch {
+      return { comingSoon: { ...DEFAULT_SETTINGS } };
+    }
+  },
+
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Co.meet Space — Centre de formation professionnelle à Lyon" },
+      { title: "Co.meet Space — Centre de formation professionnelle à Sfax" },
       {
         name: "description",
         content:
@@ -97,9 +113,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -122,13 +139,51 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const { comingSoon: ssrComingSoon } = Route.useLoaderData();
+
+  // Client-side live settings. Seeded from the SSR snapshot and kept current by:
+  //   1. Syncing whenever ssrComingSoon changes (router.invalidate() after admin save)
+  //   2. Polling Firestore every 3 s so other browser tabs also see changes promptly
+  const [liveSettings, setLiveSettings] = useState<ComingSoonSettings>(ssrComingSoon);
+
+  // Keep in sync with loader re-runs (triggered by router.invalidate in admin save)
+  useEffect(() => {
+    setLiveSettings(ssrComingSoon);
+  }, [ssrComingSoon]);
+
+  // Background poll — catches changes made from other tabs / devices
+  useEffect(() => {
+    let cancelled = false;
+
+    function refresh() {
+      getComingSoonSettings()
+        .then((s) => { if (!cancelled) setLiveSettings(s); })
+        .catch(() => { /* keep last known value on network error */ });
+    }
+
+    const id = setInterval(refresh, 3_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  // useMatch is evaluated on both server and client from the router's matched
+  // route tree — SSR and hydration always produce the same result, no window.location.
+  const isAdminRoute = useMatch({ from: "/admin", shouldThrow: false });
+
+  const showComingSoon = !isAdminRoute && shouldShowComingSoon(liveSettings);
+
+  if (showComingSoon) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ComingSoon settings={liveSettings} />
+      </QueryClientProvider>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex min-h-screen flex-col">
         <Header />
         <main className="flex-1">
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
         </main>
         <Footer />
@@ -136,4 +191,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-

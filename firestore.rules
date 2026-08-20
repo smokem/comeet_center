@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Only the designated admin account may write anything.
+    // Email sign-in is the only Auth method in use; locking to the exact
+    // address means no other Firebase Auth user (present or future) can
+    // mutate data even if they somehow obtain a valid token.
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.token.email == "admin@comeet.space"
+          && request.auth.token.email_verified == true;
+    }
+
+    // Courses — public read, admin-only write
+    match /courses/{slug} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Settings — public read (SSR gate evaluates for anonymous visitors),
+    // admin-only write
+    match /settings/{document} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

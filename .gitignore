@@ -20,6 +20,16 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Environment — never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# Firebase
+.firebase/
+functions/lib/
+_setup_functions.bat
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,6 +1,6 @@
+import { formatPrice, modeLabel, type Course } from "@/data/courses";
 import { Link } from "@tanstack/react-router";
 import { Clock, MapPin, Users } from "lucide-react";
-import { formatPrice, modeLabel, type Course } from "@/data/courses";
 
 export function CourseCard({ course }: { course: Course }) {
   const next = course.sessions[0];
@@ -9,7 +9,7 @@ export function CourseCard({ course }: { course: Course }) {
     <Link
       to="/formations/$slug"
       params={{ slug: course.slug }}
-      className="surface-card group flex flex-col overflow-hidden transition-all hover:-translate-y-1 hover:shadow-level-2"
+      className="surface-card group flex flex-col overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-level-2"
     >
       <div className="flex items-center justify-between gap-3 border-b border-border/70 bg-sage/60 px-6 py-4">
         <span className="text-label-sm uppercase text-primary">{course.category}</span>
@@ -19,7 +19,7 @@ export function CourseCard({ course }: { course: Course }) {
       </div>
 
       <div className="flex flex-1 flex-col p-6">
-        <h3 className="text-headline-md text-foreground group-hover:text-primary">
+        <h3 className="text-headline-md text-foreground transition-colors duration-300 group-hover:text-primary">
           {course.title}
         </h3>
         <p className="mt-3 flex-1 text-sm leading-6 text-muted-foreground">{course.excerpt}</p>
@@ -45,7 +45,9 @@ export function CourseCard({ course }: { course: Course }) {
           <span className="font-display text-lg font-bold text-primary">
             {formatPrice(course.price)}
           </span>
-          <span className="text-sm font-semibold text-secondary">Voir la formation →</span>
+          <span className="text-sm font-semibold text-secondary transition-transform duration-300 group-hover:translate-x-1">
+            Voir la formation →
+          </span>
         </div>
       </div>
     </Link>
