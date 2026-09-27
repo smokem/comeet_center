@@ -187,6 +187,33 @@ const courses: CourseDoc[] = [
     trainer: { name: "Sofia Merabet", role: "Coach en management", bio: "15 ans d'expérience en direction d'équipes produit, accompagne des managers de PME et scale-ups depuis 2018.", initials: "SM" },
     sessions: [{ start: "2026-09-30", end: "2026-09-30", city: "Sfax", seatsLeft: 7 }],
   },
+  // ⚠️  PLACEHOLDERS — fill price, durationHours, level, mode, trainer, and
+  //     sessions via the admin panel before featuring or marketing this course.
+  {
+    slug: "design-interieur",
+    title: "Design d'Intérieur",
+    category: "Design",
+    level: "Intermédiaire",
+    mode: "presentiel",
+    price: 0,
+    durationHours: 0,
+    featured: false,
+    excerpt: "AutoCAD, SketchUp, Lumion, IA — les outils du design d'intérieur d'aujourd'hui.",
+    description: "Maîtrisez les outils d'aujourd'hui pour concevoir les espaces de demain. Cette formation vous fait passer du plan technique à la modélisation 3D, puis au rendu réaliste — et bien plus. Encadrement par un professionnel, petits groupes, projets pratiques réels, supports de cours et vidéos, attestation de formation à la clé. Plus qu'une formation, c'est un tremplin vers votre carrière. Apprenez, créez, réalisez.",
+    objectives: [
+      "Maîtriser les outils d'aujourd'hui pour concevoir les espaces de demain",
+      "Passer du plan 2D à la modélisation 3D, puis au rendu réaliste",
+      "Obtenir une attestation de formation reconnue",
+    ],
+    syllabus: [
+      { title: "AutoCAD", detail: "Plans 2D et plans techniques" },
+      { title: "SketchUp", detail: "Modélisation 3D — conception rapide et efficace" },
+      { title: "Lumion", detail: "Rendus réalistes et animations" },
+      { title: "IA — Intelligence Artificielle", detail: "Créativité et productivité" },
+    ],
+    trainer: { name: "PLACEHOLDER", role: "PLACEHOLDER", bio: "PLACEHOLDER", initials: "??" },
+    sessions: [],
+  },
 ];
 
 // ---------------------------------------------------------------------------

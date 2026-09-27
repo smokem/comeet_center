@@ -1,25 +1,25 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { deleteDoc, doc, setDoc } from "firebase/firestore";
 import {
-  AlertTriangle, BarChart3, BookOpen, ClipboardList,
-  Clock, Eye,
-  LayoutDashboard, Loader2, LogIn, PencilLine,
-  Plus, Search, Shield, Sparkles, Trash2, Users
+    AlertTriangle, BarChart3, BookOpen, ClipboardList,
+    Clock, Eye,
+    LayoutDashboard, Loader2, LogIn, Minus,
+    PencilLine, Plus, Search, Shield, Sparkles, Trash2, Users,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ComingSoon } from "@/components/site/ComingSoon";
-import { modeLabel, type Course, type Level, type Mode } from "@/data/courses";
+import { modeLabel, type Course, type Level, type Mode, type Session } from "@/data/courses";
 import { logOut, signIn, useAuth } from "@/lib/auth";
 import { listCourses } from "@/lib/courses-api";
 import { db } from "@/lib/firebase";
 import {
-  DEFAULT_SETTINGS,
-  getComingSoonSettings,
-  saveComingSoonSettings,
-  type ComingSoonSettings,
-  type CtaType,
-  type ForceState,
+    DEFAULT_SETTINGS,
+    getComingSoonSettings,
+    saveComingSoonSettings,
+    type ComingSoonSettings,
+    type CtaType,
+    type ForceState,
 } from "@/lib/settings-api";
 
 export const Route = createFileRoute("/admin")({
@@ -33,19 +33,81 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
+// ---------------------------------------------------------------------------
+// Known categories — add new ones here as the catalogue grows
+// ---------------------------------------------------------------------------
+const CATEGORIES = [
+  "Management",
+  "Communication",
+  "Numérique",
+  "Bureautique",
+  "Design",
+];
+
+// ---------------------------------------------------------------------------
+// Draft type — mirrors Course but keeps everything as strings for form inputs,
+// and carries trainer + sessions as structured sub-objects (not text blobs).
+// ---------------------------------------------------------------------------
+type TrainerDraft = {
+  name: string;
+  role: string;
+  bio: string;
+  initials: string;
+};
+
+type SessionDraft = {
+  start: string;   // YYYY-MM-DD
+  end: string;     // YYYY-MM-DD
+  city: string;
+  seatsLeft: string; // string for input, parsed on save
+};
+
+type CardVisibilityDraft = {
+  badges: boolean;
+  title: boolean;
+  excerpt: boolean;
+  meta: boolean;
+  price: boolean;
+  cta: boolean;
+};
+
 type CourseDraft = {
-  title: string; category: string; level: Level; mode: Mode;
-  durationHours: string; price: string; excerpt: string;
-  description: string; objectivesText: string; syllabusText: string;
+  title: string;
+  category: string;
+  level: Level;
+  mode: Mode;
+  durationHours: string;
+  price: string;
+  excerpt: string;
+  description: string;
+  objectivesText: string;   // one objective per line
+  syllabusText: string;     // one "Title | detail" per line
+  trainer: TrainerDraft;
+  sessions: SessionDraft[];
   featured: boolean;
+  cardTextVisibility: CardVisibilityDraft;
+};
+
+const emptyTrainer: TrainerDraft = { name: "", role: "", bio: "", initials: "" };
+const emptySession: SessionDraft = { start: "", end: "", city: "Sfax", seatsLeft: "12" };
+
+const emptyCardVisibility: CardVisibilityDraft = {
+  badges: true, title: true, excerpt: true, meta: true, price: true, cta: true,
 };
 
 const emptyDraft: CourseDraft = {
-  title: "", category: "", level: "Débutant", mode: "presentiel",
+  title: "", category: "Management", level: "Débutant", mode: "presentiel",
   durationHours: "7", price: "490", excerpt: "", description: "",
-  objectivesText: "", syllabusText: "", featured: false,
+  objectivesText: "", syllabusText: "",
+  trainer: { ...emptyTrainer },
+  sessions: [],
+  featured: false,
+  cardTextVisibility: { ...emptyCardVisibility },
 };
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 function slugify(v: string) {
   return v.toLowerCase().normalize("NFD")
     .replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, "-")
@@ -54,12 +116,37 @@ function slugify(v: string) {
 
 function courseToDraft(c: Course): CourseDraft {
   return {
-    title: c.title, category: c.category, level: c.level, mode: c.mode,
-    durationHours: String(c.durationHours), price: String(c.price),
-    excerpt: c.excerpt, description: c.description,
+    title: c.title,
+    category: c.category,
+    level: c.level,
+    mode: c.mode,
+    durationHours: String(c.durationHours),
+    price: String(c.price),
+    excerpt: c.excerpt,
+    description: c.description,
     objectivesText: c.objectives.join("\n"),
     syllabusText: c.syllabus.map((s) => `${s.title} | ${s.detail}`).join("\n"),
+    trainer: {
+      name: c.trainer.name,
+      role: c.trainer.role,
+      bio: c.trainer.bio,
+      initials: c.trainer.initials,
+    },
+    sessions: c.sessions.map((s) => ({
+      start: s.start,
+      end: s.end,
+      city: s.city,
+      seatsLeft: String(s.seatsLeft),
+    })),
     featured: Boolean(c.featured),
+    cardTextVisibility: {
+      badges:  c.cardTextVisibility?.badges  !== false,
+      title:   c.cardTextVisibility?.title   !== false,
+      excerpt: c.cardTextVisibility?.excerpt !== false,
+      meta:    c.cardTextVisibility?.meta    !== false,
+      price:   c.cardTextVisibility?.price   !== false,
+      cta:     c.cardTextVisibility?.cta     !== false,
+    },
   };
 }
 
@@ -70,19 +157,50 @@ function draftToCourse(draft: CourseDraft, existing?: Course): Course {
     const [t, d] = line.split("|").map((s) => s.trim());
     return { title: t || `Module ${i + 1}`, detail: d || "À compléter" };
   }).filter((s) => s.title.length > 0);
+
+  const sessions: Session[] = draft.sessions
+    .filter((s) => s.start && s.end && s.city.trim())
+    .map((s) => ({
+      start: s.start,
+      end: s.end,
+      city: s.city.trim(),
+      seatsLeft: Math.max(0, Number(s.seatsLeft) || 0),
+    }));
+
   return {
-    slug: existing?.slug ?? slugify(title), title,
-    category: draft.category.trim(), level: draft.level, mode: draft.mode,
+    slug: existing?.slug ?? slugify(title),
+    title,
+    category: draft.category.trim(),
+    level: draft.level,
+    mode: draft.mode,
     durationHours: Number(draft.durationHours) || 0,
     price: Number(draft.price) || 0,
     excerpt: draft.excerpt.trim() || title,
     description: draft.description.trim() || draft.excerpt.trim() || title,
     objectives: objectives.length > 0 ? objectives : ["À définir"],
     syllabus: syllabus.length > 0 ? syllabus : [{ title: "Programme", detail: "À compléter" }],
-    trainer: existing?.trainer ?? { name: "À assigner", role: "Formateur", bio: "Profil à compléter.", initials: "AA" },
-    sessions: existing?.sessions ?? [],
+    trainer: {
+      name: draft.trainer.name.trim() || "À assigner",
+      role: draft.trainer.role.trim() || "Formateur",
+      bio: draft.trainer.bio.trim() || "Profil à compléter.",
+      initials: draft.trainer.initials.trim() || "??",
+    },
+    sessions,
     featured: draft.featured,
+    cardTextVisibility: draft.cardTextVisibility,
   };
+}
+
+/** Returns true when a course still has placeholder/incomplete data */
+function isIncomplete(c: Course): boolean {
+  return (
+    c.price === 0 ||
+    c.durationHours === 0 ||
+    c.sessions.length === 0 ||
+    c.trainer.name === "À assigner" ||
+    c.trainer.name === "PLACEHOLDER" ||
+    c.trainer.initials === "??"
+  );
 }
 
 const actionItems = [
@@ -92,6 +210,15 @@ const actionItems = [
   "Mettre à jour les contenus publics du site",
 ];
 
+// ---------------------------------------------------------------------------
+// Shared input class
+// ---------------------------------------------------------------------------
+const ic =
+  "w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-ring/10";
+
+// ---------------------------------------------------------------------------
+// LoginScreen
+// ---------------------------------------------------------------------------
 function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -136,14 +263,12 @@ function LoginScreen() {
               <div>
                 <label htmlFor="admin-email" className="mb-2 block text-sm font-semibold">E-mail</label>
                 <input id="admin-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  required autoComplete="username"
-                  className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-ring/10" />
+                  required autoComplete="username" className={ic} />
               </div>
               <div>
                 <label htmlFor="admin-password" className="mb-2 block text-sm font-semibold">Mot de passe</label>
                 <input id="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                  required autoComplete="current-password"
-                  className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-ring/10" />
+                  required autoComplete="current-password" className={ic} />
               </div>
               {error && <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
               <button type="submit" disabled={loading || !email || !password}
@@ -159,6 +284,9 @@ function LoginScreen() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Dashboard
+// ---------------------------------------------------------------------------
 function Dashboard({ userEmail }: { userEmail: string }) {
   const [activeTab, setActiveTab] = useState<"formations" | "coming-soon">("formations");
   const [courses, setCourses] = useState<Course[]>([]);
@@ -175,33 +303,44 @@ function Dashboard({ userEmail }: { userEmail: string }) {
       .catch(() => setLoadingCourses(false));
   }, []);
 
-  const selectedCourse = useMemo(() => courses.find((c) => c.slug === selectedSlug) ?? null, [courses, selectedSlug]);
+  const selectedCourse = useMemo(
+    () => courses.find((c) => c.slug === selectedSlug) ?? null,
+    [courses, selectedSlug],
+  );
 
   useEffect(() => {
-    setDraft(selectedCourse ? courseToDraft(selectedCourse) : emptyDraft);
+    setDraft(selectedCourse ? courseToDraft(selectedCourse) : { ...emptyDraft, trainer: { ...emptyTrainer }, sessions: [], cardTextVisibility: { ...emptyCardVisibility } });
   }, [selectedCourse]);
 
   const filteredCourses = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return courses;
-    return courses.filter((c) => [c.title, c.category, c.level, modeLabel[c.mode]].join(" ").toLowerCase().includes(q));
+    return courses.filter((c) =>
+      [c.title, c.category, c.level, modeLabel[c.mode]].join(" ").toLowerCase().includes(q),
+    );
   }, [courses, search]);
 
   const stats = useMemo(() => {
     const featured = courses.filter((c) => c.featured).length;
     const sessions = courses.reduce((t, c) => t + c.sessions.length, 0);
     const seats = courses.reduce((t, c) => t + c.sessions.reduce((s, sess) => s + sess.seatsLeft, 0), 0);
-    const avgPrice = courses.length > 0 ? Math.round(courses.reduce((t, c) => t + c.price, 0) / courses.length) : 0;
+    const avgPrice = courses.length > 0
+      ? Math.round(courses.reduce((t, c) => t + c.price, 0) / courses.length)
+      : 0;
     return [
       { label: "Formations actives", value: String(courses.length), icon: BookOpen },
       { label: "À la une", value: String(featured), icon: Sparkles },
       { label: "Sessions listées", value: String(sessions), icon: ClipboardList },
-      { label: "Prix moyen", value: `${avgPrice} €`, icon: BarChart3 },
+      { label: "Prix moyen", value: `${avgPrice} TND`, icon: BarChart3 },
       { label: "Places ouvertes", value: String(seats), icon: Users },
     ];
   }, [courses]);
 
-  function resetDraft() { setSelectedSlug(null); setDraft(emptyDraft); setSaveError(null); }
+  function resetDraft() {
+    setSelectedSlug(null);
+    setDraft({ ...emptyDraft, trainer: { ...emptyTrainer }, sessions: [], cardTextVisibility: { ...emptyCardVisibility } });
+    setSaveError(null);
+  }
 
   async function handleSaveCourse() {
     setSaving(true); setSaveError(null);
@@ -213,8 +352,9 @@ function Dashboard({ userEmail }: { userEmail: string }) {
         return exists ? prev.map((c) => c.slug === next.slug ? next : c) : [next, ...prev];
       });
       setSelectedSlug(next.slug);
-    } catch { setSaveError("Erreur lors de la sauvegarde. Vérifie ta connexion."); }
-    finally { setSaving(false); }
+    } catch {
+      setSaveError("Erreur lors de la sauvegarde. Vérifie ta connexion.");
+    } finally { setSaving(false); }
   }
 
   async function handleDeleteCourse(slug: string) {
@@ -248,41 +388,38 @@ function Dashboard({ userEmail }: { userEmail: string }) {
             { id: "formations", label: "Formations", icon: BookOpen },
             { id: "coming-soon", label: "Page d'attente", icon: Clock },
           ] as const).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
+            <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 border-b-2 px-4 pb-3 pt-1 text-sm font-semibold transition-colors ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
+              }`}>
               <tab.icon className="size-4" />
               {tab.label}
             </button>
           ))}
         </div>
 
-        {activeTab === "formations" && <FormationsTab
-          courses={courses}
-          loadingCourses={loadingCourses}
-          filteredCourses={filteredCourses}
-          stats={stats}
-          selectedSlug={selectedSlug}
-          selectedCourse={selectedCourse}
-          draft={draft}
-          setDraft={setDraft}
-          search={search}
-          setSearch={setSearch}
-          saving={saving}
-          saveError={saveError}
-          handleSaveCourse={handleSaveCourse}
-          handleDeleteCourse={handleDeleteCourse}
-          resetDraft={resetDraft}
-          setSelectedSlug={setSelectedSlug}
-          courseToDraft={courseToDraft}
-        />}
+        {activeTab === "formations" && (
+          <FormationsTab
+            courses={courses}
+            loadingCourses={loadingCourses}
+            filteredCourses={filteredCourses}
+            stats={stats}
+            selectedSlug={selectedSlug}
+            selectedCourse={selectedCourse}
+            draft={draft}
+            setDraft={setDraft}
+            search={search}
+            setSearch={setSearch}
+            saving={saving}
+            saveError={saveError}
+            handleSaveCourse={handleSaveCourse}
+            handleDeleteCourse={handleDeleteCourse}
+            resetDraft={resetDraft}
+            setSelectedSlug={setSelectedSlug}
+          />
+        )}
 
         {activeTab === "coming-soon" && <ComingSoonTab userEmail={userEmail} />}
       </div>
@@ -291,9 +428,8 @@ function Dashboard({ userEmail }: { userEmail: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// FormationsTab — extracted from Dashboard for cleanliness
+// FormationsTab
 // ---------------------------------------------------------------------------
-
 type FormationsTabProps = {
   courses: Course[];
   loadingCourses: boolean;
@@ -311,7 +447,6 @@ type FormationsTabProps = {
   handleDeleteCourse: (slug: string) => Promise<void>;
   resetDraft: () => void;
   setSelectedSlug: React.Dispatch<React.SetStateAction<string | null>>;
-  courseToDraft: (c: Course) => CourseDraft;
 };
 
 function FormationsTab({
@@ -331,10 +466,30 @@ function FormationsTab({
   handleDeleteCourse,
   resetDraft,
   setSelectedSlug,
-  courseToDraft,
 }: FormationsTabProps) {
+
+  // ── Session helpers ──────────────────────────────────────────────────────
+  function addSession() {
+    setDraft((d) => ({ ...d, sessions: [...d.sessions, { ...emptySession }] }));
+  }
+  function removeSession(i: number) {
+    setDraft((d) => ({ ...d, sessions: d.sessions.filter((_, idx) => idx !== i) }));
+  }
+  function updateSession(i: number, field: keyof SessionDraft, value: string) {
+    setDraft((d) => ({
+      ...d,
+      sessions: d.sessions.map((s, idx) => idx === i ? { ...s, [field]: value } : s),
+    }));
+  }
+
+  // ── Trainer helper ───────────────────────────────────────────────────────
+  function updateTrainer(field: keyof TrainerDraft, value: string) {
+    setDraft((d) => ({ ...d, trainer: { ...d.trainer, [field]: value } }));
+  }
+
   return (
     <div className="space-y-8">
+      {/* Stats row */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {stats.map((card) => (
           <article key={card.label} className="surface-card p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-level-2">
@@ -347,25 +502,30 @@ function FormationsTab({
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid gap-6 lg:grid-cols-[1.6fr_0.4fr]">
+
+        {/* ── Main editor panel ─────────────────────────────────────── */}
         <div className="surface-card p-7">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="text-headline-lg">Gestion des formations</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Crée, modifie ou supprime une formation.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Crée, modifie ou supprime une formation.</p>
             </div>
             <button type="button" onClick={resetDraft}
               className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-accent">
               <Plus className="size-4" /> Nouvelle formation
             </button>
           </div>
+
+          {/* Search + selection indicator */}
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div>
               <label htmlFor="course-search" className="mb-2 block text-sm font-semibold">Rechercher</label>
               <div className="flex items-center gap-2 rounded-xl border border-border bg-input px-4 py-3">
                 <Search className="size-4 text-muted-foreground" />
                 <input id="course-search" value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Management, Numérique…" className="w-full bg-transparent text-sm outline-none" />
+                  placeholder="Management, Numérique…"
+                  className="w-full bg-transparent text-sm outline-none" />
               </div>
             </div>
             <div className="rounded-2xl bg-sage/60 p-4 text-sm text-muted-foreground">
@@ -373,132 +533,346 @@ function FormationsTab({
             </div>
           </div>
 
-          <div className="mt-6 grid gap-6 xl:grid-cols-2">
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {(["title", "category"] as const).map((field) => (
-                  <div key={field}>
-                    <label htmlFor={`f-${field}`} className="mb-2 block text-sm font-semibold">{field === "title" ? "Titre" : "Catégorie"}</label>
-                    <input id={`f-${field}`} value={draft[field]} onChange={(e) => setDraft((d) => ({ ...d, [field]: e.target.value }))}
-                      className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-ring/10" />
-                  </div>
-                ))}
-                <div>
-                  <label htmlFor="f-level" className="mb-2 block text-sm font-semibold">Niveau</label>
-                  <select id="f-level" value={draft.level} onChange={(e) => setDraft((d) => ({ ...d, level: e.target.value as Level }))}
-                    className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary">
-                    <option>Débutant</option><option>Intermédiaire</option><option>Avancé</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="f-mode" className="mb-2 block text-sm font-semibold">Format</label>
-                  <select id="f-mode" value={draft.mode} onChange={(e) => setDraft((d) => ({ ...d, mode: e.target.value as Mode }))}
-                    className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary">
-                    <option value="presentiel">Présentiel</option>
-                    <option value="hybride">Hybride</option>
-                    <option value="en-ligne">En ligne</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="f-hours" className="mb-2 block text-sm font-semibold">Durée (h)</label>
-                  <input id="f-hours" type="number" min="1" value={draft.durationHours}
-                    onChange={(e) => setDraft((d) => ({ ...d, durationHours: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary" />
-                </div>
-                <div>
-                  <label htmlFor="f-price" className="mb-2 block text-sm font-semibold">Prix (€)</label>
-                  <input id="f-price" type="number" min="0" value={draft.price}
-                    onChange={(e) => setDraft((d) => ({ ...d, price: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary" />
-                </div>
+          {/* ── Section A: Identité ──────────────────────────────── */}
+          <div className="mt-8">
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Identité
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="f-title" className="mb-2 block text-sm font-semibold">Titre</label>
+                <input id="f-title" value={draft.title}
+                  onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+                  className={ic} />
               </div>
-              {(["excerpt", "description"] as const).map((field) => (
-                <div key={field}>
-                  <label htmlFor={`f-${field}`} className="mb-2 block text-sm font-semibold">{field === "excerpt" ? "Accroche" : "Description"}</label>
-                  <textarea id={`f-${field}`} rows={3} value={draft[field]}
-                    onChange={(e) => setDraft((d) => ({ ...d, [field]: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary" />
-                </div>
-              ))}
-              <label className="flex items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium">
-                <input type="checkbox" checked={draft.featured} onChange={(e) => setDraft((d) => ({ ...d, featured: e.target.checked }))} className="size-4 accent-primary" />
-                Mettre à la une
-              </label>
-              {saveError && <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{saveError}</p>}
-              <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={handleSaveCourse} disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-xl bg-cta px-6 py-3.5 font-semibold text-cta-foreground transition-all hover:-translate-y-0.5 hover:shadow-level-2 disabled:opacity-60">
-                  {saving ? <Loader2 className="size-4 animate-spin" /> : <PencilLine className="size-4" />}
-                  {saving ? "Sauvegarde…" : "Sauvegarder"}
-                </button>
-                <button type="button" onClick={resetDraft}
-                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-6 py-3.5 font-semibold text-primary transition-colors hover:bg-accent">
-                  <Plus className="size-4" /> Nouveau
-                </button>
+              <div>
+                <label htmlFor="f-category" className="mb-2 block text-sm font-semibold">Catégorie</label>
+                <select id="f-category" value={draft.category}
+                  onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
+                  className={ic}>
+                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="f-level" className="mb-2 block text-sm font-semibold">Niveau</label>
+                <select id="f-level" value={draft.level}
+                  onChange={(e) => setDraft((d) => ({ ...d, level: e.target.value as Level }))}
+                  className={ic}>
+                  <option>Débutant</option>
+                  <option>Intermédiaire</option>
+                  <option>Avancé</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="f-mode" className="mb-2 block text-sm font-semibold">Format</label>
+                <select id="f-mode" value={draft.mode}
+                  onChange={(e) => setDraft((d) => ({ ...d, mode: e.target.value as Mode }))}
+                  className={ic}>
+                  <option value="presentiel">Présentiel</option>
+                  <option value="hybride">Hybride</option>
+                  <option value="en-ligne">En ligne</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="f-hours" className="mb-2 block text-sm font-semibold">Durée (heures)</label>
+                <input id="f-hours" type="number" min="0" value={draft.durationHours}
+                  onChange={(e) => setDraft((d) => ({ ...d, durationHours: e.target.value }))}
+                  className={ic} />
+              </div>
+              <div>
+                <label htmlFor="f-price" className="mb-2 block text-sm font-semibold">Prix (TND)</label>
+                <input id="f-price" type="number" min="0" value={draft.price}
+                  onChange={(e) => setDraft((d) => ({ ...d, price: e.target.value }))}
+                  className={ic} />
               </div>
             </div>
+            <div className="mt-4 space-y-3">
+              <label className="flex items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium cursor-pointer hover:bg-accent transition-colors">
+                <input type="checkbox" checked={draft.featured}
+                  onChange={(e) => setDraft((d) => ({ ...d, featured: e.target.checked }))}
+                  className="size-4 accent-primary" />
+                Mettre à la une (affiché sur la page d'accueil)
+              </label>
+            </div>
 
+            {/* ── Visibility per field on the catalog card ────────── */}
+            <div className="mt-6">
+              <p className="mb-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Visibilité sur la carte catalogue
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(
+                  [
+                    { key: "badges",  label: "Catégorie + format (bandeau)" },
+                    { key: "title",   label: "Titre" },
+                    { key: "excerpt", label: "Accroche" },
+                    { key: "meta",    label: "Durée / niveau / ville" },
+                    { key: "price",   label: "Prix" },
+                    { key: "cta",     label: '"Voir la formation →"' },
+                  ] as { key: keyof CardVisibilityDraft; label: string }[]
+                ).map(({ key, label }) => (
+                  <label key={key}
+                    className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium cursor-pointer hover:bg-accent transition-colors">
+                    <input type="checkbox"
+                      checked={draft.cardTextVisibility[key]}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          cardTextVisibility: { ...d.cardTextVisibility, [key]: e.target.checked },
+                        }))
+                      }
+                      className="size-4 accent-primary shrink-0" />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Section B: Contenu éditorial ────────────────────── */}
+          <div className="mt-8">
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Contenu
+            </h3>
             <div className="space-y-4">
-              <div className="rounded-3xl bg-primary p-5 text-primary-foreground">
-                <p className="text-label-sm uppercase text-primary-foreground/60">Aperçu</p>
-                <p className="mt-2 font-display text-xl font-bold">{draft.title || "Titre de la formation"}</p>
-                <p className="mt-1 text-sm text-primary-foreground/75">{draft.excerpt || "Accroche…"}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {[draft.category || "Catégorie", draft.level, modeLabel[draft.mode]].map((tag) => (
-                    <span key={tag} className="rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-semibold uppercase text-inverse-primary">{tag}</span>
-                  ))}
-                </div>
+              <div>
+                <label htmlFor="f-excerpt" className="mb-1 block text-sm font-semibold">
+                  Accroche <span className="font-normal text-muted-foreground">— texte affiché sur la carte du catalogue</span>
+                </label>
+                <textarea id="f-excerpt" rows={2} value={draft.excerpt}
+                  onChange={(e) => setDraft((d) => ({ ...d, excerpt: e.target.value }))}
+                  className={ic} />
               </div>
-              <div className="surface-card p-5">
-                <h3 className="text-headline-md">Formations</h3>
-                {loadingCourses ? (
-                  <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Chargement…</div>
-                ) : (
-                  <div className="mt-4 space-y-3">
-                    {filteredCourses.map((course) => (
-                      <div key={course.slug} className={`rounded-2xl border p-4 transition-all ${selectedSlug === course.slug ? "border-primary bg-primary/5" : "border-border bg-background"}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <button type="button" onClick={() => { setSelectedSlug(course.slug); setDraft(courseToDraft(course)); }} className="text-left">
-                            <p className="font-semibold">{course.title}</p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">{course.category} · {course.price} €</p>
-                          </button>
-                          <div className="flex shrink-0 gap-1">
-                            <button type="button" onClick={() => { setSelectedSlug(course.slug); setDraft(courseToDraft(course)); }}
-                              className="rounded-full border border-border p-1.5 text-primary hover:bg-accent" aria-label="Modifier">
-                              <PencilLine className="size-3.5" />
-                            </button>
-                            <button type="button" onClick={() => handleDeleteCourse(course.slug)}
-                              className="rounded-full border border-border p-1.5 text-destructive hover:bg-destructive/10" aria-label="Supprimer">
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                        {course.featured && <span className="mt-2 inline-block rounded-full bg-primary-fixed px-2.5 py-0.5 text-xs font-semibold text-primary">À la une</span>}
-                      </div>
-                    ))}
+              <div>
+                <label htmlFor="f-description" className="mb-1 block text-sm font-semibold">
+                  Description complète <span className="font-normal text-muted-foreground">— page de détail uniquement</span>
+                </label>
+                <textarea id="f-description" rows={5} value={draft.description}
+                  onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+                  className={ic} />
+              </div>
+              <div>
+                <label htmlFor="f-objectives" className="mb-1 block text-sm font-semibold">
+                  Objectifs <span className="font-normal text-muted-foreground">— un objectif par ligne</span>
+                </label>
+                <textarea id="f-objectives" rows={4} value={draft.objectivesText}
+                  onChange={(e) => setDraft((d) => ({ ...d, objectivesText: e.target.value }))}
+                  placeholder={"Maîtriser X\nSavoir faire Y\nObtenir Z"}
+                  className={ic} />
+              </div>
+              <div>
+                <label htmlFor="f-syllabus" className="mb-1 block text-sm font-semibold">
+                  Programme <span className="font-normal text-muted-foreground">— format : Titre | Détail (une ligne par module)</span>
+                </label>
+                <textarea id="f-syllabus" rows={4} value={draft.syllabusText}
+                  onChange={(e) => setDraft((d) => ({ ...d, syllabusText: e.target.value }))}
+                  placeholder={"Module 1 | Description du contenu\nModule 2 | Description du contenu"}
+                  className={ic} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Section C: Formateur ────────────────────────────── */}
+          <div className="mt-8">
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Formateur
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="f-trainer-name" className="mb-2 block text-sm font-semibold">Nom complet</label>
+                <input id="f-trainer-name" value={draft.trainer.name}
+                  onChange={(e) => updateTrainer("name", e.target.value)}
+                  placeholder="Prénom Nom"
+                  className={ic} />
+              </div>
+              <div>
+                <label htmlFor="f-trainer-initials" className="mb-2 block text-sm font-semibold">Initiales</label>
+                <input id="f-trainer-initials" value={draft.trainer.initials}
+                  onChange={(e) => updateTrainer("initials", e.target.value)}
+                  placeholder="PL" maxLength={3}
+                  className={ic} />
+              </div>
+              <div>
+                <label htmlFor="f-trainer-role" className="mb-2 block text-sm font-semibold">Rôle / titre</label>
+                <input id="f-trainer-role" value={draft.trainer.role}
+                  onChange={(e) => updateTrainer("role", e.target.value)}
+                  placeholder="Coach en management"
+                  className={ic} />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="f-trainer-bio" className="mb-2 block text-sm font-semibold">Biographie courte</label>
+                <textarea id="f-trainer-bio" rows={3} value={draft.trainer.bio}
+                  onChange={(e) => updateTrainer("bio", e.target.value)}
+                  placeholder="15 ans d'expérience dans…"
+                  className={ic} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Section D: Sessions ─────────────────────────────── */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Sessions
+              </h3>
+              <button type="button" onClick={addSession}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-accent">
+                <Plus className="size-3.5" /> Ajouter une session
+              </button>
+            </div>
+
+            {draft.sessions.length === 0 && (
+              <p className="mt-4 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+                Aucune session — la formation ne sera pas réservable. Ajoutez au moins une date avant de mettre en ligne.
+              </p>
+            )}
+
+            <div className="mt-4 space-y-4">
+              {draft.sessions.map((s, i) => (
+                <div key={i} className="rounded-2xl border border-border bg-background p-4">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="text-xs font-bold uppercase text-muted-foreground">Session {i + 1}</span>
+                    <button type="button" onClick={() => removeSession(i)}
+                      className="rounded-lg border border-destructive/30 p-1.5 text-destructive hover:bg-destructive/10 transition-colors"
+                      aria-label="Supprimer cette session">
+                      <Minus className="size-3.5" />
+                    </button>
                   </div>
-                )}
-              </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Date de début</label>
+                      <input type="date" value={s.start}
+                        onChange={(e) => updateSession(i, "start", e.target.value)}
+                        className={ic} />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Date de fin</label>
+                      <input type="date" value={s.end}
+                        onChange={(e) => updateSession(i, "end", e.target.value)}
+                        className={ic} />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Ville</label>
+                      <input type="text" value={s.city}
+                        onChange={(e) => updateSession(i, "city", e.target.value)}
+                        placeholder="Sfax"
+                        className={ic} />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Places disponibles</label>
+                      <input type="number" min="0" value={s.seatsLeft}
+                        onChange={(e) => updateSession(i, "seatsLeft", e.target.value)}
+                        className={ic} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Save / error ─────────────────────────────────────── */}
+          <div className="mt-8 space-y-4">
+            {saveError && (
+              <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {saveError}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-3">
+              <button type="button" onClick={handleSaveCourse} disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-cta px-6 py-3.5 font-semibold text-cta-foreground transition-all hover:-translate-y-0.5 hover:shadow-level-2 disabled:opacity-60">
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <PencilLine className="size-4" />}
+                {saving ? "Sauvegarde…" : "Sauvegarder"}
+              </button>
+              <button type="button" onClick={resetDraft}
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-6 py-3.5 font-semibold text-primary transition-colors hover:bg-accent">
+                <Plus className="size-4" /> Nouveau
+              </button>
             </div>
           </div>
         </div>
 
+        {/* ── Right sidebar: preview + course list ──────────────────── */}
         <div className="space-y-6">
-          <div className="surface-card p-7">
-            <h2 className="text-headline-lg">Actions rapides</h2>
-            <div className="mt-5 grid gap-3">
-              {actionItems.map((item) => (
-                <div key={item} className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3 hover:-translate-y-0.5 transition-transform">
-                  <span className="text-sm font-medium">{item}</span>
-                  <span className="text-sm font-semibold text-secondary">Ouvrir</span>
-                </div>
-              ))}
+          {/* Mini card preview */}
+          <div className="surface-card p-5">
+            <p className="text-label-sm uppercase text-muted-foreground">Aperçu carte</p>
+            <div className="mt-3 rounded-2xl bg-primary p-4 text-primary-foreground">
+              <p className="font-display text-base font-bold leading-tight">{draft.title || "Titre de la formation"}</p>
+              <p className="mt-1 text-xs text-primary-foreground/75 line-clamp-2">{draft.excerpt || "Accroche…"}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {[draft.category || "Catégorie", draft.level, modeLabel[draft.mode]].map((tag) => (
+                  <span key={tag} className="rounded-full bg-primary-foreground/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-inverse-primary">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="surface-card p-7">
-            <h2 className="text-headline-lg">Statut</h2>
-            <div className="mt-4 rounded-2xl bg-sage/60 p-4 text-sm text-muted-foreground">
-              Connecté : <span className="font-semibold text-primary">{_courses.length} formations chargées</span>
+
+          {/* Course list */}
+          <div className="surface-card p-5">
+            <h3 className="text-headline-md">Formations</h3>
+            {loadingCourses ? (
+              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Chargement…
+              </div>
+            ) : (
+              <div className="mt-4 space-y-2">
+                {filteredCourses.map((course) => {
+                  const incomplete = isIncomplete(course);
+                  return (
+                    <div key={course.slug}
+                      className={`rounded-2xl border p-3 transition-all ${
+                        selectedSlug === course.slug
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-background"
+                      }`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <button type="button"
+                          onClick={() => { setSelectedSlug(course.slug); }}
+                          className="min-w-0 text-left">
+                          <p className="truncate text-sm font-semibold">{course.title}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {course.category} · {course.price} TND
+                          </p>
+                        </button>
+                        <div className="flex shrink-0 items-center gap-1">
+                          {incomplete && (
+                            <span title="Données incomplètes — prix, durée, formateur ou sessions manquants"
+                              className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700 border border-amber-300">
+                              ⚠ incomplet
+                            </span>
+                          )}
+                          <button type="button"
+                            onClick={() => { setSelectedSlug(course.slug); }}
+                            className="rounded-full border border-border p-1.5 text-primary hover:bg-accent"
+                            aria-label="Modifier">
+                            <PencilLine className="size-3.5" />
+                          </button>
+                          <button type="button" onClick={() => handleDeleteCourse(course.slug)}
+                            className="rounded-full border border-border p-1.5 text-destructive hover:bg-destructive/10"
+                            aria-label="Supprimer">
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {course.featured && (
+                        <span className="mt-1.5 inline-block rounded-full bg-primary-fixed px-2.5 py-0.5 text-xs font-semibold text-primary">
+                          À la une
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Status */}
+          <div className="surface-card p-5">
+            <h3 className="text-headline-md">Statut</h3>
+            <div className="mt-3 rounded-2xl bg-sage/60 p-3 text-sm text-muted-foreground">
+              Connecté · <span className="font-semibold text-primary">{_courses.length} formations</span>
             </div>
           </div>
         </div>
@@ -510,7 +884,6 @@ function FormationsTab({
 // ---------------------------------------------------------------------------
 // ComingSoonTab
 // ---------------------------------------------------------------------------
-
 const inputClass =
   "w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-ring/10";
 
@@ -546,8 +919,6 @@ function ComingSoonTab({ userEmail }: { userEmail: string }) {
         userEmail,
       );
       setSavedAt(new Date().toLocaleTimeString("fr-FR"));
-      // Re-run the root loader so the coming-soon gate on this tab reflects
-      // the new forceState immediately without a manual page reload.
       await router.invalidate();
     } catch {
       setSaveError("Erreur lors de la sauvegarde.");
@@ -566,7 +937,6 @@ function ComingSoonTab({ userEmail }: { userEmail: string }) {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
-      {/* Form */}
       <div className="surface-card space-y-6 p-7">
         <div>
           <h2 className="text-headline-lg">Page d'attente</h2>
@@ -575,16 +945,13 @@ function ComingSoonTab({ userEmail }: { userEmail: string }) {
           </p>
         </div>
 
-        {/* forceState — prominent warning when not auto */}
         <div>
           <label className="mb-2 block text-sm font-semibold">
             État de la page <span className="text-muted-foreground">(Africa/Tunis)</span>
           </label>
           <div className="grid grid-cols-3 gap-2">
             {(["auto", "show", "hide"] as ForceState[]).map((s) => (
-              <button
-                key={s}
-                type="button"
+              <button key={s} type="button"
                 onClick={() => setForm((f) => ({ ...f, forceState: s }))}
                 className={`rounded-xl border py-2.5 text-sm font-semibold transition-all ${
                   form.forceState === s
@@ -592,8 +959,7 @@ function ComingSoonTab({ userEmail }: { userEmail: string }) {
                       : s === "hide" ? "border-secondary bg-secondary/10 text-secondary"
                       : "border-primary bg-primary/10 text-primary"
                     : "border-border bg-background text-muted-foreground hover:bg-accent"
-                }`}
-              >
+                }`}>
                 {s === "auto" ? "🟢 Auto" : s === "show" ? "🔴 Forcer ON" : "🔵 Forcer OFF"}
               </button>
             ))}
@@ -612,21 +978,16 @@ function ComingSoonTab({ userEmail }: { userEmail: string }) {
           )}
         </div>
 
-        {/* Target date */}
         <div>
           <label htmlFor="cs-target" className="mb-2 block text-sm font-semibold">
             Date d'ouverture <span className="font-normal text-muted-foreground">(fuseau Africa/Tunis = UTC+1)</span>
           </label>
-          <input
-            id="cs-target"
-            type="datetime-local"
+          <input id="cs-target" type="datetime-local"
             value={form.targetDate.slice(0, 16)}
             onChange={(e) => setForm((f) => ({ ...f, targetDate: e.target.value + ":00" }))}
-            className={inputClass}
-          />
+            className={inputClass} />
         </div>
 
-        {/* Headlines */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="cs-fr" className="mb-2 block text-sm font-semibold">Titre français</label>
@@ -642,7 +1003,6 @@ function ComingSoonTab({ userEmail }: { userEmail: string }) {
           </div>
         </div>
 
-        {/* Supporting line */}
         <div>
           <label htmlFor="cs-support" className="mb-2 block text-sm font-semibold">Ligne d'accroche</label>
           <input id="cs-support" value={form.supportingLine}
@@ -650,7 +1010,6 @@ function ComingSoonTab({ userEmail }: { userEmail: string }) {
             className={inputClass} />
         </div>
 
-        {/* CTA */}
         <div className="grid gap-4 sm:grid-cols-[auto_1fr_1.5fr]">
           <div>
             <label htmlFor="cs-cta-type" className="mb-2 block text-sm font-semibold">Type CTA</label>
@@ -704,7 +1063,6 @@ function ComingSoonTab({ userEmail }: { userEmail: string }) {
         </div>
       </div>
 
-      {/* Live preview */}
       <div>
         <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <Eye className="size-4" /> Aperçu en temps réel
@@ -719,6 +1077,9 @@ function ComingSoonTab({ userEmail }: { userEmail: string }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// AdminPage
+// ---------------------------------------------------------------------------
 function AdminPage() {
   const authState = useAuth();
 
