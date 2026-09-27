@@ -26,6 +26,27 @@ export type Course = {
   trainer: { name: string; role: string; bio: string; initials: string };
   sessions: Session[];
   featured?: boolean;
+  /**
+   * Per-field visibility controls for the catalog card.
+   * Every key defaults to true when the field or individual key is absent,
+   * so existing courses render unchanged unless explicitly toggled off.
+   *
+   * Fields:
+   *   badges   — category label + mode pill (top strip)
+   *   title    — course title (h3)
+   *   excerpt  — short description text
+   *   meta     — duration / level / city row
+   *   price    — formatted price
+   *   cta      — "Voir la formation →" link text
+   */
+  cardTextVisibility?: {
+    badges?: boolean;
+    title?: boolean;
+    excerpt?: boolean;
+    meta?: boolean;
+    price?: boolean;
+    cta?: boolean;
+  };
 };
 
 export const modeLabel: Record<Mode, string> = {
@@ -45,9 +66,9 @@ export function formatDate(iso: string) {
 }
 
 export function formatPrice(value: number) {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(value);
+  return (
+    new Intl.NumberFormat("fr-FR", {
+      maximumFractionDigits: 0,
+    }).format(value) + " TND"
+  );
 }
