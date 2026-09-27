@@ -90,7 +90,7 @@ function Contact() {
         </div>
       </section>
 
-      <section className="container-page grid gap-10 py-14 lg:grid-cols-[1.5fr_1fr] lg:items-start">
+      <section className="container-page grid gap-10 py-14 pb-24 lg:grid-cols-[1.5fr_1fr] lg:items-start">
 
         {/* Form */}
         <FadeIn>

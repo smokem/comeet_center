@@ -1,14 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Check, Star } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import heroImage from "@/assets/hero-formation.jpg";
 import { CourseCard } from "@/components/site/CourseCard";
 import { type Course } from "@/data/courses";
 import { listCourses } from "@/lib/courses-api";
+import { VENUE_IMAGES } from "@/lib/venue-images";
 
 const WA_HREF = "https://wa.me/21622489100";
 const WA_NUMBER = "+216 22 489 100";
+
+// ---------------------------------------------------------------------------
+// Venue photo helpers — resolve paths from the shared VENUE_IMAGES list
+// so the timeline and hero stay in sync with the single source of truth.
+// ---------------------------------------------------------------------------
+function venuePhoto(filename: string): string {
+  const match = VENUE_IMAGES.find((img) => img.src.endsWith(filename));
+  return match?.src ?? `/venue/${filename}`;
+}
 
 export const Route = createFileRoute("/")({
   loader: async (): Promise<{ featured: Course[] }> => {
@@ -32,33 +41,34 @@ export const Route = createFileRoute("/")({
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
-const stats = [
-  { value: "1 200+", label: "apprenants formés" },
-  { value: "96 %", label: "de satisfaction" },
-  { value: "28", label: "formateurs praticiens" },
-  { value: "12", label: "ans d'expérience" },
-];
 
+// Each timeline step carries its own photo, sourced from venue-images.ts.
+// Step 3 title is "Espace de coworking" (placeholder — confirm wording before
+// shipping; description text also needs updating to match, see index.tsx note).
 const timelineMoments = [
   {
     time: "08h30",
     label: "L'arrivée",
     text: "Café, bibliothèque ouverte, wifi. Le centre accueille dès 8h du matin — pas besoin de courir.",
+    photo: venuePhoto("IMG_4061.webp"),
   },
   {
     time: "10h00",
     label: "En pleine session",
     text: "Groupe de 12 maximum. Le formateur pratique encore son métier. Vous travaillez sur vos vrais cas.",
+    photo: venuePhoto("IMG_4058.webp"),
   },
   {
     time: "13h00",
-    label: "La pause déjeuner",
-    text: "Espace restauration sur place. Les échanges entre participants continuent souvent à table.",
+    label: "Espace de coworking",
+    text: "Entre deux sessions, le centre reste ouvert. Postes de travail, wifi rapide, café — les participants restent, travaillent, échangent.",
+    photo: venuePhoto("IMG_4063.webp"),
   },
   {
     time: "19h00",
     label: "Le cours du soir",
     text: "Le centre est ouvert jusqu'à 22h. Idéal pour les professionnels qui ne peuvent pas se libérer en journée.",
+    photo: venuePhoto("IMG_4053.webp"),
   },
 ];
 
@@ -88,15 +98,6 @@ const journeySteps = [
     text: "Attestation de formation délivrée sous 48h. Suivi à 30 jours inclus.",
     cta: null,
   },
-];
-
-const testimonials = [
-  { quote: "Une formation dense, sans blabla. Nos managers ont mis les rituels en place la semaine suivante.", name: "Claire Vasseur", role: "DRH, Groupe Métalis", rating: 5 },
-  { quote: "L'accompagnement administratif sur le financement nous a fait gagner un temps fou.", name: "Julien Mercier", role: "Dirigeant, Atelier Nord", rating: 5 },
-  { quote: "Le formateur connaît vraiment son sujet. Il a adapté les exercices à notre secteur en temps réel.", name: "Amira Ben Salah", role: "Responsable RH, TechMed Sfax", rating: 5 },
-  { quote: "J'ai suivi la formation en ligne depuis Tunis, la qualité était identique au présentiel.", name: "Karim Marzougui", role: "Manager, StartupBridge", rating: 5 },
-  { quote: "Groupe petit, rythme soutenu, cas concrets. Exactement ce que j'attendais.", name: "Sonia Trabelsi", role: "Directrice, Cabinet Trabelsi", rating: 5 },
-  { quote: "On est repartis avec un plan d'action utilisable dès le lundi. C'est rare.", name: "Mehdi Khouaja", role: "Chef de projet, Telnet", rating: 5 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -154,7 +155,38 @@ function BookingNotification() {
 }
 
 // ---------------------------------------------------------------------------
-// Sticky timeline
+// Timeline — progress indicator bar
+// Rendered OUTSIDE the photo container on desktop (to the right of the image).
+// On mobile it appears as a small badge in the top-right corner of each photo.
+// ---------------------------------------------------------------------------
+function ProgressBar({
+  activeIndex,
+  total,
+}: {
+  activeIndex: number;
+  total: number;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className={`h-1 rounded-full transition-all duration-500 ${
+            i === activeIndex
+              ? "w-8 bg-cta"
+              : i < activeIndex
+              ? "w-4 bg-primary/40"
+              : "w-4 bg-border"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sticky timeline — desktop: pinned scroll-scrub with side-by-side layout.
+// Mobile: simple stacked sequence, no pinning.
 // ---------------------------------------------------------------------------
 function Timeline() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -167,7 +199,9 @@ function Timeline() {
     const onScroll = () => {
       const { top, height } = container.getBoundingClientRect();
       const progress = Math.max(0, Math.min(1, -top / (height - window.innerHeight)));
-      setActiveIndex(Math.min(timelineMoments.length - 1, Math.floor(progress * timelineMoments.length)));
+      setActiveIndex(
+        Math.min(timelineMoments.length - 1, Math.floor(progress * timelineMoments.length)),
+      );
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -178,11 +212,12 @@ function Timeline() {
 
   return (
     <div ref={containerRef} style={{ height: `${timelineMoments.length * 100}vh` }} className="relative">
-      {/* Sticky panel */}
-      <div className="sticky top-14 flex h-[calc(100vh-3.5rem)] items-center overflow-hidden">
-        <div className="container-page grid h-full w-full gap-8 py-12 lg:grid-cols-[1fr_1.4fr] lg:items-center">
 
-          {/* Left — time scrubber */}
+      {/* ── DESKTOP: sticky side-by-side panel ── */}
+      <div className="sticky top-14 hidden h-[calc(100vh-3.5rem)] items-center overflow-hidden lg:flex">
+        <div className="container-page grid h-full w-full gap-8 py-12 lg:grid-cols-[1fr_1.4fr_auto] lg:items-center">
+
+          {/* Col 1 — time scrubber */}
           <div className="flex flex-col justify-center">
             <FadeIn>
               <p className="text-label-sm uppercase text-secondary">Une journée au centre</p>
@@ -200,8 +235,11 @@ function Timeline() {
                     const container = containerRef.current;
                     if (!container) return;
                     const targetProgress = (i + 0.5) / timelineMoments.length;
-                    const containerTop = container.getBoundingClientRect().top + window.scrollY;
-                    const scrollTarget = containerTop + targetProgress * (container.offsetHeight - window.innerHeight);
+                    const containerTop =
+                      container.getBoundingClientRect().top + window.scrollY;
+                    const scrollTarget =
+                      containerTop +
+                      targetProgress * (container.offsetHeight - window.innerHeight);
                     window.scrollTo({ top: scrollTarget, behavior: "smooth" });
                   }}
                   className={`group flex w-full items-center gap-4 rounded-2xl px-4 py-3 text-left transition-all duration-300 ${
@@ -210,11 +248,19 @@ function Timeline() {
                       : "hover:bg-primary/5 text-muted-foreground"
                   }`}
                 >
-                  <span className={`font-display text-2xl font-extrabold tabular-nums transition-all ${i === activeIndex ? "text-inverse-primary" : "text-primary/30"}`}>
+                  <span
+                    className={`font-display text-2xl font-extrabold tabular-nums transition-all ${
+                      i === activeIndex ? "text-inverse-primary" : "text-primary/30"
+                    }`}
+                  >
                     {m.time}
                   </span>
                   <div className="min-w-0">
-                    <p className={`text-sm font-semibold ${i === activeIndex ? "text-primary-foreground" : "text-foreground"}`}>
+                    <p
+                      className={`text-sm font-semibold ${
+                        i === activeIndex ? "text-primary-foreground" : "text-foreground"
+                      }`}
+                    >
                       {m.label}
                     </p>
                     {i === activeIndex && (
@@ -240,82 +286,84 @@ function Timeline() {
             </div>
           </div>
 
-          {/* Right — photo */}
-          <div className="relative hidden overflow-hidden rounded-3xl bg-primary/10 lg:block" style={{ height: "min(70vh, 560px)" }}>
+          {/* Col 2 — photo (no indicator inside) */}
+          <div
+            className="relative overflow-hidden rounded-3xl bg-primary/10"
+            style={{ height: "min(70vh, 560px)" }}
+          >
             <img
-              src={heroImage}
+              key={active.photo}
+              src={active.photo}
               alt={active.label}
               className="h-full w-full object-cover transition-opacity duration-700"
-              key={activeIndex}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/20 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-8">
-              <p className="font-display text-3xl font-extrabold text-inverse-primary">{active.time}</p>
-              <h3 className="mt-1 font-display text-2xl font-bold text-primary-foreground">{active.label}</h3>
-              <p className="mt-2 max-w-md text-sm leading-6 text-primary-foreground/80">{active.text}</p>
-            </div>
-            {/* Time progress bar */}
-            <div className="absolute right-6 top-6 flex flex-col gap-1.5">
-              {timelineMoments.map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-1 rounded-full transition-all duration-500 ${
-                    i === activeIndex ? "w-8 bg-cta" : i < activeIndex ? "w-4 bg-primary-foreground/60" : "w-4 bg-primary-foreground/20"
-                  }`}
-                />
-              ))}
+              <p className="font-display text-3xl font-extrabold text-inverse-primary">
+                {active.time}
+              </p>
+              <h3 className="mt-1 font-display text-2xl font-bold text-primary-foreground">
+                {active.label}
+              </h3>
+              <p className="mt-2 max-w-md text-sm leading-6 text-primary-foreground/80">
+                {active.text}
+              </p>
             </div>
           </div>
 
-          {/* Mobile: show active moment as card */}
-          <div className="lg:hidden">
-            <div className="rounded-3xl bg-primary p-6 text-primary-foreground">
-              <p className="font-display text-3xl font-extrabold text-inverse-primary">{active.time}</p>
-              <h3 className="mt-1 font-display text-xl font-bold">{active.label}</h3>
-              <p className="mt-2 text-sm leading-6 text-primary-foreground/80">{active.text}</p>
-            </div>
+          {/* Col 3 — progress indicator, outside the photo to its right */}
+          <div className="flex items-center self-center">
+            <ProgressBar activeIndex={activeIndex} total={timelineMoments.length} />
           </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-// ---------------------------------------------------------------------------
-// Testimonial marquee
-// ---------------------------------------------------------------------------
-function TestimonialMarquee() {
-  const doubled = [...testimonials, ...testimonials];
-  return (
-    <div className="overflow-hidden py-4">
-      <div
-        className="flex gap-5"
-        style={{ animation: "marquee 40s linear infinite", width: "max-content" }}
-      >
-        {doubled.map((t, i) => (
-          <figure
-            key={i}
-            className="surface-card w-80 shrink-0 p-6"
-          >
-            <div className="flex gap-0.5">
-              {Array.from({ length: t.rating }).map((_, j) => (
-                <Star key={j} className="size-3.5 fill-cta text-cta" />
-              ))}
-            </div>
-            <blockquote className="mt-3 text-sm leading-6 text-foreground">
-              « {t.quote} »
-            </blockquote>
-            <figcaption className="mt-4 flex items-center gap-2">
-              <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                {t.name.split(" ").map((n) => n[0]).join("")}
-              </span>
-              <div>
-                <p className="text-xs font-semibold text-foreground">{t.name}</p>
-                <p className="text-xs text-muted-foreground">{t.role}</p>
+      {/* ── MOBILE: stacked sequence, no pinning ── */}
+      <div className="lg:hidden">
+        <div className="container-page py-12">
+          <p className="text-label-sm uppercase text-secondary">Une journée au centre</p>
+          <h2 className="mt-3 text-headline-lg text-primary">
+            Ouvert de 8h à 22h.<br />Chaque heure compte.
+          </h2>
+
+          <div className="mt-8 space-y-10">
+            {timelineMoments.map((m) => (
+              <div key={m.time} className="space-y-4">
+                {/* Photo with time badge in top-right corner */}
+                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-primary/10">
+                  <img
+                    src={m.photo}
+                    alt={m.label}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
+                  {/* Time badge — top-right corner of the photo */}
+                  <div className="absolute right-3 top-3 rounded-xl bg-cta px-3 py-1.5 font-display text-sm font-extrabold text-white shadow-level-2">
+                    {m.time}
+                  </div>
+                </div>
+                {/* Text block */}
+                <div>
+                  <p className="font-display text-xl font-bold text-primary">{m.label}</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{m.text}</p>
+                </div>
               </div>
-            </figcaption>
-          </figure>
-        ))}
+            ))}
+          </div>
+
+          <div className="mt-10">
+            <a
+              href={WA_HREF}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-level-2 transition-all hover:-translate-y-0.5"
+            >
+              <WaIcon className="size-4" />
+              Venez voir le centre
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -333,30 +381,44 @@ function JourneySteps() {
       <div className="space-y-4">
         {journeySteps.map((step, i) => (
           <FadeIn key={step.number} delay={i * 80}>
-            <div className={`relative flex gap-8 rounded-3xl p-7 transition-all duration-300 ${
-              step.highlight
-                ? "bg-primary text-primary-foreground shadow-level-3"
-                : "surface-card hover:shadow-level-2"
-            }`}>
+            <div
+              className={`relative flex gap-8 rounded-3xl p-7 transition-all duration-300 ${
+                step.highlight
+                  ? "bg-primary text-primary-foreground shadow-level-3"
+                  : "surface-card hover:shadow-level-2"
+              }`}
+            >
               {/* Step number bubble on the rail */}
-              <div className={`hidden shrink-0 items-center justify-center lg:flex`}>
-                <span className={`flex size-9 items-center justify-center rounded-full font-display text-sm font-extrabold ${
-                  step.highlight ? "bg-cta text-white" : "bg-primary-fixed text-primary"
-                }`}>
+              <div className="hidden shrink-0 items-center justify-center lg:flex">
+                <span
+                  className={`flex size-9 items-center justify-center rounded-full font-display text-sm font-extrabold ${
+                    step.highlight ? "bg-cta text-white" : "bg-primary-fixed text-primary"
+                  }`}
+                >
                   {step.number}
                 </span>
               </div>
               <div className="flex-1">
                 {/* Mobile number */}
-                <span className={`mb-2 inline-flex size-8 items-center justify-center rounded-full font-display text-xs font-extrabold lg:hidden ${
-                  step.highlight ? "bg-cta text-white" : "bg-primary-fixed text-primary"
-                }`}>
+                <span
+                  className={`mb-2 inline-flex size-8 items-center justify-center rounded-full font-display text-xs font-extrabold lg:hidden ${
+                    step.highlight ? "bg-cta text-white" : "bg-primary-fixed text-primary"
+                  }`}
+                >
                   {step.number}
                 </span>
-                <h3 className={`font-display text-xl font-bold ${step.highlight ? "text-primary-foreground" : "text-foreground"}`}>
+                <h3
+                  className={`font-display text-xl font-bold ${
+                    step.highlight ? "text-primary-foreground" : "text-foreground"
+                  }`}
+                >
                   {step.title}
                 </h3>
-                <p className={`mt-2 text-sm leading-6 ${step.highlight ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                <p
+                  className={`mt-2 text-sm leading-6 ${
+                    step.highlight ? "text-primary-foreground/80" : "text-muted-foreground"
+                  }`}
+                >
                   {step.text}
                 </p>
                 {step.cta && (
@@ -426,27 +488,16 @@ function Home() {
             </div>
           </div>
 
+          {/* Hero photo — real venue photo 4061 (Accueil) */}
           <div className="relative animate-fade-in-up [animation-delay:120ms]">
             <img
-              src={heroImage}
-              alt="Session de formation professionnelle dans les locaux de Co.meet Space"
+              src={venuePhoto("IMG_4061.webp")}
+              alt="Accueil du centre Co.meet Space à Sfax"
               width={1600}
               height={1200}
               className="w-full rounded-3xl border border-primary-foreground/15 object-cover shadow-level-3 transition-transform duration-500 ease-out hover:scale-[1.01]"
             />
           </div>
-        </div>
-
-        {/* Stats bar */}
-        <div className="border-t border-primary-foreground/10">
-          <dl className="container-page grid grid-cols-2 gap-6 py-8 md:grid-cols-4">
-            {stats.map((s, i) => (
-              <div key={s.label} className="animate-fade-in-up" style={{ animationDelay: `${i * 90}ms` }}>
-                <dt className="font-display text-3xl font-extrabold text-inverse-primary">{s.value}</dt>
-                <dd className="mt-1 text-sm text-primary-foreground/60">{s.label}</dd>
-              </div>
-            ))}
-          </dl>
         </div>
       </section>
 
@@ -492,14 +543,6 @@ function Home() {
         <JourneySteps />
       </section>
 
-      {/* ── Testimonial marquee ───────────────────────────────────── */}
-      <section className="border-y border-border/70 bg-sage/30 py-16 overflow-hidden">
-        <FadeIn>
-          <p className="container-page mb-8 text-label-sm uppercase text-secondary">Ce qu'ils en disent</p>
-        </FadeIn>
-        <TestimonialMarquee />
-      </section>
-
       {/* ── Booking notification ──────────────────────────────────── */}
       <section className="container-page py-20">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
@@ -528,52 +571,36 @@ function Home() {
         </div>
       </section>
 
-      {/* ── Final CTA band ────────────────────────────────────────── */}
+      {/* ── Location map ──────────────────────────────────────────── */}
       <section className="bg-primary py-20 text-primary-foreground">
         <FadeIn>
-          <div className="container-page text-center">
-            <p className="text-label-sm uppercase text-inverse-primary">Prêt à commencer ?</p>
-            <h2 className="mx-auto mt-3 max-w-2xl text-display-lg">
-              Pas de formulaire.<br />Juste un appel.
+          <div className="container-page">
+            <p className="text-label-sm uppercase text-inverse-primary">Nous trouver</p>
+            <h2 className="mt-3 max-w-xl text-display-lg">
+              Co.meet Space, Sfax.
             </h2>
-            <p className="mx-auto mt-5 max-w-lg text-lg text-primary-foreground/70">
-              Lun–Sam 8h–22h · Dim 8h–17h · Sfax
+            <p className="mt-4 max-w-lg text-lg text-primary-foreground/70">
+              Rte de Mahdia Km 5.5, 3011 Sfax · Lun–Sam 8h–22h · Dim 8h–17h
             </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <a
-                href={WA_HREF}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 rounded-2xl bg-[#25D366] px-8 py-4 text-lg font-bold text-white shadow-level-3 transition-all hover:-translate-y-1 hover:shadow-level-3"
-              >
-                <WaIcon className="size-6" />
-                {WA_NUMBER}
-              </a>
-              <Link
-                to="/formations"
-                className="inline-flex items-center gap-2 rounded-2xl border border-primary-foreground/25 px-8 py-4 text-lg font-semibold text-primary-foreground transition-all hover:bg-primary-foreground/10"
-              >
-                Voir le catalogue <ArrowRight className="size-5" />
-              </Link>
+            {/* Responsive map container — aspect-ratio 4/3 matches the 800×600 embed */}
+            <div
+              className="mt-8 w-full overflow-hidden rounded-3xl border border-primary-foreground/15 shadow-level-3"
+              style={{ aspectRatio: "4/3", maxHeight: "480px" }}
+            >
+              <iframe
+                title="Localisation Co.meet Space"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3276.863523698389!2d10.77550011094249!3d34.78421087861503!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1301d34ae0af3fbb%3A0x336b30919b7fc3d6!2sCoMeetSpace!5e0!3m2!1sfr!2stn!4v1790507237330!5m2!1sfr!2stn"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
             </div>
           </div>
         </FadeIn>
       </section>
-
-      {/* Marquee keyframe */}
-      <style>{`
-        @keyframes marquee {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        @keyframes marquee-pause {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        .overflow-hidden:hover .flex[style*="marquee"] {
-          animation-play-state: paused;
-        }
-      `}</style>
     </>
   );
 }

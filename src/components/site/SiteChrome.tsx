@@ -128,7 +128,7 @@ export function Header() {
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-border/70 bg-primary text-primary-foreground">
+    <footer className="border-t border-border/70 bg-primary text-primary-foreground">
       <div className="container-page grid gap-10 py-14 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
           <img

@@ -3,23 +3,7 @@ import { Building2, HeartHandshake, Sparkles, Target } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { FadeIn } from "@/lib/fade-in";
-
-// ---------------------------------------------------------------------------
-// Venue photos — static local assets from public/venue/
-// ---------------------------------------------------------------------------
-type VenueImage = { src: string; label: string };
-
-const VENUE_IMAGES: VenueImage[] = [
-  { src: "/venue/WhatsApp-Image-2026-08-16-at-1.18.37-PM.webp", label: "Co.meet Space" },
-  { src: "/venue/2.webp", label: "Espace de formation" },
-  { src: "/venue/3.webp", label: "Salle d'atelier" },
-  { src: "/venue/4.webp", label: "Zone de travail" },
-  { src: "/venue/5.webp", label: "Salle de formation" },
-  { src: "/venue/6.webp", label: "Espace collaboratif" },
-  { src: "/venue/7.webp", label: "Bibliothèque" },
-  { src: "/venue/8.webp", label: "Salle de repos" },
-  { src: "/venue/9.webp", label: "Accueil" },
-];
+import { VENUE_IMAGES } from "@/lib/venue-images";
 
 export const Route = createFileRoute("/a-propos")({
   loader: () => ({}),
@@ -242,7 +226,7 @@ function About() {
       </section>
 
       {/* ── CTA ───────────────────────────────────────────────────── */}
-      <section className="container-page pb-8">
+      <section className="container-page pb-24">
         <FadeIn>
           <div className="rounded-3xl bg-tertiary px-8 py-14 text-tertiary-foreground md:px-14">
             <h2 className="max-w-xl text-headline-lg">Venez visiter le centre</h2>

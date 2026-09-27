@@ -5,6 +5,7 @@ import { CourseCard } from "@/components/site/CourseCard";
 import { levels, modeLabel, type Course, type Mode } from "@/data/courses";
 import { listCourses } from "@/lib/courses-api";
 import { FadeIn } from "@/lib/fade-in";
+import { VENUE_IMAGES } from "@/lib/venue-images";
 
 export const Route = createFileRoute("/formations/")({
   loader: async (): Promise<{ courses: Course[] }> => {
@@ -129,6 +130,33 @@ function Catalog() {
             </div>
           </FadeIn>
         )}
+      </section>
+
+      {/* ── Venue photo strip ─────────────────────────────────────── */}
+      <section className="border-t border-border/70 bg-sage/50">
+        <div className="container-page py-14">
+          <FadeIn>
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-label-sm uppercase text-secondary">Le centre</p>
+                <h2 className="mt-1 text-headline-md text-primary">Apprenez dans un espace fait pour ça</h2>
+              </div>
+            </div>
+            {/* First 6 photos as a compact 6-up grid */}
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {VENUE_IMAGES.slice(0, 6).map((img) => (
+                <div key={img.src} className="aspect-square overflow-hidden rounded-xl bg-sage/40">
+                  <img
+                    src={img.src}
+                    alt={img.label}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                  />
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
       </section>
     </>
   );

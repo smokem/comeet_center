@@ -57,7 +57,7 @@ function CourseDetail() {
       </section>
 
       {/* Content */}
-      <section className="container-page grid gap-10 py-14 lg:grid-cols-[1.6fr_1fr] lg:items-start">
+      <section className="container-page grid gap-10 py-14 pb-24 lg:grid-cols-[1.6fr_1fr] lg:items-start">
         <div className="space-y-10">
 
           <FadeIn>
