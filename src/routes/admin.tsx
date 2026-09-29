@@ -3,8 +3,9 @@ import { deleteDoc, doc, setDoc } from "firebase/firestore";
 import {
     AlertTriangle, BarChart3, BookOpen, ClipboardList,
     Clock, Eye,
-    LayoutDashboard, Loader2, LogIn, Minus,
-    PencilLine, Plus, Search, Shield, Sparkles, Trash2, Users,
+    LayoutDashboard, Loader2, LogIn, MapPin,
+    Minus,
+    PencilLine, Plus, Search, Shield, Sparkles, Trash2, Users
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -14,9 +15,13 @@ import { logOut, signIn, useAuth } from "@/lib/auth";
 import { listCourses } from "@/lib/courses-api";
 import { db } from "@/lib/firebase";
 import {
+    DEFAULT_BUSINESS_HOURS,
     DEFAULT_SETTINGS,
+    getBusinessHours,
     getComingSoonSettings,
+    saveBusinessHours,
     saveComingSoonSettings,
+    type BusinessHoursSettings,
     type ComingSoonSettings,
     type CtaType,
     type ForceState,
@@ -288,7 +293,7 @@ function LoginScreen() {
 // Dashboard
 // ---------------------------------------------------------------------------
 function Dashboard({ userEmail }: { userEmail: string }) {
-  const [activeTab, setActiveTab] = useState<"formations" | "coming-soon">("formations");
+  const [activeTab, setActiveTab] = useState<"formations" | "coming-soon" | "horaires">("formations");
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
@@ -387,6 +392,7 @@ function Dashboard({ userEmail }: { userEmail: string }) {
           {([
             { id: "formations", label: "Formations", icon: BookOpen },
             { id: "coming-soon", label: "Page d'attente", icon: Clock },
+            { id: "horaires", label: "Horaires", icon: MapPin },
           ] as const).map((tab) => (
             <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 border-b-2 px-4 pb-3 pt-1 text-sm font-semibold transition-colors ${
@@ -422,6 +428,7 @@ function Dashboard({ userEmail }: { userEmail: string }) {
         )}
 
         {activeTab === "coming-soon" && <ComingSoonTab userEmail={userEmail} />}
+        {activeTab === "horaires" && <HorairesTab userEmail={userEmail} />}
       </div>
     </section>
   );
@@ -886,6 +893,183 @@ function FormationsTab({
 // ---------------------------------------------------------------------------
 const inputClass =
   "w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-ring/10";
+
+// ---------------------------------------------------------------------------
+// HorairesTab — edit business hours stored in settings/businessHours
+// ---------------------------------------------------------------------------
+function HorairesTab({ userEmail }: { userEmail: string }) {
+  const [form, setForm] = useState<BusinessHoursSettings>({ ...DEFAULT_BUSINESS_HOURS });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    getBusinessHours()
+      .then((h) => { setForm(h); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function handleSave() {
+    setSaving(true); setSaveError(null);
+    try {
+      await saveBusinessHours({
+        tagline: form.tagline,
+        weekdayLabel: form.weekdayLabel,
+        weekdayHours: form.weekdayHours,
+        sundayLabel: form.sundayLabel,
+        sundayHours: form.sundayHours,
+        weekdayHoursProse: form.weekdayHoursProse,
+        sundayHoursProse: form.sundayHoursProse,
+        timelineHeading: form.timelineHeading,
+        timelineStep1: form.timelineStep1,
+        timelineStep2: form.timelineStep2,
+        timelineStep3: form.timelineStep3,
+        timelineStep4: form.timelineStep4,
+      }, userEmail);
+      setSavedAt(new Date().toLocaleTimeString("fr-FR"));
+      await router.invalidate();
+    } catch {
+      setSaveError("Erreur lors de la sauvegarde.");
+    } finally { setSaving(false); }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-48 items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const ic = "w-full rounded-xl border border-border bg-input px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-ring/10";
+
+  function field(id: string, label: string, hint: string, key: keyof BusinessHoursSettings) {
+    return (
+      <div>
+        <label htmlFor={id} className="mb-1 block text-sm font-semibold">
+          {label} <span className="font-normal text-muted-foreground text-xs">{hint}</span>
+        </label>
+        <input
+          id={id}
+          value={form[key] as string}
+          onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+          className={ic}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
+      <div className="surface-card space-y-6 p-7">
+        <div>
+          <h2 className="text-headline-lg">Horaires d'ouverture</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ces valeurs remplacent tous les horaires affichés sur le site. Les changements sont visibles immédiatement après sauvegarde.
+          </p>
+        </div>
+
+        {/* Tagline — shown in hero + map section */}
+        <div>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">Bandeau court</h3>
+          {field("h-tagline", "Tagline", "affiché dans le hero et la section carte", "tagline")}
+        </div>
+
+        {/* Hours table — contact page */}
+        <div>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">Tableau horaires (page Contact)</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {field("h-wdlabel", "Libellé semaine", 'ex: "Lundi – samedi"', "weekdayLabel")}
+            {field("h-wdhours", "Heures semaine", 'ex: "8 h – 22 h"', "weekdayHours")}
+            {field("h-sunlabel", "Libellé dimanche", 'ex: "Dimanche"', "sundayLabel")}
+            {field("h-sunhours", "Heures dimanche", 'ex: "8 h – 17 h"', "sundayHours")}
+          </div>
+        </div>
+
+        {/* Prose hours — contact + a-propos */}
+        <div>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">Formulation longue (texte courant)</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {field("h-wdprose", "Heures semaine", 'ex: "8 h à 22 h"', "weekdayHoursProse")}
+            {field("h-sunprose", "Heures dimanche", 'ex: "8 h à 17 h"', "sundayHoursProse")}
+          </div>
+        </div>
+
+        {/* Timeline section */}
+        <div>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">Section "Une journée au centre"</h3>
+          <div className="space-y-4">
+            {field("h-tlhead", "Titre", 'ex: "Ouvert de 8h à 22h."', "timelineHeading")}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {field("h-tl1", "Étape 1", "ex: 8h 30min", "timelineStep1")}
+              {field("h-tl2", "Étape 2", "ex: 10h00", "timelineStep2")}
+              {field("h-tl3", "Étape 3", "ex: 13h00", "timelineStep3")}
+              {field("h-tl4", "Étape 4", "ex: 19h00", "timelineStep4")}
+            </div>
+          </div>
+        </div>
+
+        {saveError && (
+          <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {saveError}
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-center gap-4">
+          <button type="button" onClick={handleSave} disabled={saving}
+            className="inline-flex items-center gap-2 rounded-xl bg-cta px-6 py-3.5 font-semibold text-cta-foreground transition-all hover:-translate-y-0.5 hover:shadow-level-2 disabled:opacity-60">
+            {saving ? <Loader2 className="size-4 animate-spin" /> : <PencilLine className="size-4" />}
+            {saving ? "Sauvegarde…" : "Sauvegarder"}
+          </button>
+          {savedAt && (
+            <p className="text-xs text-muted-foreground">
+              Sauvegardé par <strong>{userEmail}</strong> à {savedAt}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Live preview panel */}
+      <div className="surface-card p-7">
+        <p className="mb-4 text-sm font-bold uppercase tracking-widest text-muted-foreground">Aperçu</p>
+        <div className="space-y-5 text-sm">
+          <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
+            <p className="text-label-sm uppercase text-primary-foreground/60">Hero · Carte</p>
+            <p className="mt-1 font-semibold">Sfax · {form.tagline}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-4">
+            <p className="text-label-sm uppercase text-muted-foreground mb-2">Tableau Contact</p>
+            <div className="flex justify-between py-1 border-b border-border/50">
+              <span>{form.weekdayLabel}</span>
+              <span className="font-medium">{form.weekdayHours}</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span>{form.sundayLabel}</span>
+              <span className="font-medium">{form.sundayHours}</span>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border p-4">
+            <p className="text-label-sm uppercase text-muted-foreground mb-2">Texte courant</p>
+            <p className="text-muted-foreground">
+              Disponible du lundi au samedi de <strong className="text-foreground">{form.weekdayHoursProse}</strong> et le dimanche de <strong className="text-foreground">{form.sundayHoursProse}</strong>.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border p-4">
+            <p className="text-label-sm uppercase text-muted-foreground mb-2">Timeline</p>
+            <p className="font-semibold text-primary">{form.timelineHeading}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {[form.timelineStep1, form.timelineStep2, form.timelineStep3, form.timelineStep4].map((t) => (
+                <span key={t} className="rounded-lg bg-primary-fixed px-2.5 py-1 text-xs font-bold text-primary">{t}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ComingSoonTab({ userEmail }: { userEmail: string }) {
   const router = useRouter();

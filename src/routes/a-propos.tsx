@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2, HeartHandshake, Sparkles, Target } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Building2, ChevronLeft, ChevronRight, HeartHandshake, Target } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { FadeIn } from "@/lib/fade-in";
 import { VENUE_IMAGES } from "@/lib/venue-images";
+import { useBusinessHours } from "./__root";
 
 export const Route = createFileRoute("/a-propos")({
   loader: () => ({}),
@@ -14,13 +15,13 @@ export const Route = createFileRoute("/a-propos")({
       {
         name: "description",
         content:
-          "Co.meet Space, centre de formation certifié Qualiopi à Sfax : pédagogie active, formateurs praticiens, groupes de 12 personnes maximum.",
+          "Co.meet Space, centre de formation professionnelle à Sfax : pédagogie active, formateurs praticiens, groupes de 15 personnes maximum.",
       },
       { property: "og:title", content: "Le centre — Co.meet Space" },
       {
         property: "og:description",
         content:
-          "Pédagogie active, formateurs praticiens, groupes de 12 personnes maximum, à Sfax.",
+          "Pédagogie active, formateurs praticiens, groupes de 15 personnes maximum, à Sfax.",
       },
     ],
   }),
@@ -46,70 +47,110 @@ const values = [
 ];
 
 // ---------------------------------------------------------------------------
-// Auto-advancing crossfade slideshow — no controls, pure CSS opacity
+// VenueCarousel — manual swipe/click with auto-advance
+// Auto-advances every SLIDE_DURATION ms; manual interaction resets the timer.
 // ---------------------------------------------------------------------------
-const SLIDE_DURATION = 4000; // ms each slide is visible
-const FADE_DURATION  = 800;  // ms CSS transition (must match className below)
+const SLIDE_DURATION = 5000; // ms between auto-advances
 
-function VenueSlideshow() {
+function VenueCarousel() {
   const [current, setCurrent] = useState(0);
-  const [visible, setVisible] = useState(true);
+  const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dragStartX = useRef<number | null>(null);
+  const total = VENUE_IMAGES.length;
 
+  // Reset the auto-advance timer (called after any manual navigation)
+  const resetTimer = useCallback(() => {
+    if (autoTimer.current) clearInterval(autoTimer.current);
+    autoTimer.current = setInterval(() => {
+      setCurrent((i) => (i + 1) % total);
+    }, SLIDE_DURATION);
+  }, [total]);
+
+  // Start auto-advance on mount
   useEffect(() => {
-    if (VENUE_IMAGES.length < 2) return;
+    resetTimer();
+    return () => { if (autoTimer.current) clearInterval(autoTimer.current); };
+  }, [resetTimer]);
 
-    const timer = setInterval(() => {
-      // Fade out
-      setVisible(false);
-      setTimeout(() => {
-        // Advance, then fade in
-        setCurrent((i) => (i + 1) % VENUE_IMAGES.length);
-        setVisible(true);
-      }, FADE_DURATION);
-    }, SLIDE_DURATION + FADE_DURATION);
+  function goTo(index: number) {
+    setCurrent((index + total) % total);
+    resetTimer();
+  }
 
-    return () => clearInterval(timer);
-  }, []);
+  function prev() { goTo(current - 1); }
+  function next() { goTo(current + 1); }
+
+  // Touch / mouse swipe
+  function onDragStart(x: number) { dragStartX.current = x; }
+  function onDragEnd(x: number) {
+    if (dragStartX.current === null) return;
+    const delta = dragStartX.current - x;
+    if (Math.abs(delta) > 40) delta > 0 ? next() : prev();
+    dragStartX.current = null;
+  }
 
   const image = VENUE_IMAGES[current];
   if (!image) return null;
 
   return (
-    <div className="relative aspect-[16/11] overflow-hidden rounded-3xl border border-border bg-sage/30 shadow-level-3">
+    <div
+      className="relative aspect-[16/11] overflow-hidden rounded-3xl border border-border bg-sage/30 shadow-level-3 cursor-grab active:cursor-grabbing select-none"
+      onMouseDown={(e) => onDragStart(e.clientX)}
+      onMouseUp={(e) => onDragEnd(e.clientX)}
+      onMouseLeave={() => { dragStartX.current = null; }}
+      onTouchStart={(e) => onDragStart(e.touches[0]!.clientX)}
+      onTouchEnd={(e) => onDragEnd(e.changedTouches[0]!.clientX)}
+    >
+      {/* Image — CSS fade between slides */}
       <img
         key={image.src}
         src={image.src}
         alt={image.label}
-        className="h-full w-full object-cover"
-        style={{
-          opacity: visible ? 1 : 0,
-          transition: `opacity ${FADE_DURATION}ms ease-in-out`,
-        }}
+        className="h-full w-full object-cover transition-opacity duration-500 pointer-events-none"
       />
+
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-primary/10 to-transparent pointer-events-none" />
-      {/* Slide label */}
-      <div
-        className="absolute bottom-0 left-0 right-0 p-6 text-primary-foreground"
-        style={{
-          opacity: visible ? 1 : 0,
-          transition: `opacity ${FADE_DURATION}ms ease-in-out`,
-        }}
+
+      {/* Prev / Next arrows */}
+      <button
+        type="button"
+        aria-label="Photo précédente"
+        onClick={prev}
+        className="absolute left-3 top-1/2 -translate-y-1/2 flex size-10 items-center justify-center rounded-full bg-primary/60 text-primary-foreground backdrop-blur-sm transition hover:bg-primary"
       >
+        <ChevronLeft className="size-5" />
+      </button>
+      <button
+        type="button"
+        aria-label="Photo suivante"
+        onClick={next}
+        className="absolute right-3 top-1/2 -translate-y-1/2 flex size-10 items-center justify-center rounded-full bg-primary/60 text-primary-foreground backdrop-blur-sm transition hover:bg-primary"
+      >
+        <ChevronRight className="size-5" />
+      </button>
+
+      {/* Slide label */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 text-primary-foreground pointer-events-none">
         <p className="text-label-sm uppercase text-primary-foreground/60">
-          {String(current + 1).padStart(2, "0")} / {VENUE_IMAGES.length}
+          {String(current + 1).padStart(2, "0")} / {total}
         </p>
         <h3 className="mt-1 font-display text-2xl font-bold">{image.label}</h3>
       </div>
-      {/* Dot indicators */}
+
+      {/* Dot indicators — clickable */}
       <div className="absolute bottom-5 right-6 flex gap-1.5">
         {VENUE_IMAGES.map((_, i) => (
-          <span
+          <button
             key={i}
-            className="block size-1.5 rounded-full transition-all duration-300"
+            type="button"
+            aria-label={`Photo ${i + 1}`}
+            onClick={() => goTo(i)}
+            className="block rounded-full transition-all duration-300"
             style={{
-              background: i === current ? "white" : "rgba(255,255,255,0.35)",
-              transform: i === current ? "scale(1.4)" : "scale(1)",
+              width: i === current ? "1rem" : "0.375rem",
+              height: "0.375rem",
+              background: i === current ? "white" : "rgba(255,255,255,0.4)",
             }}
           />
         ))}
@@ -119,6 +160,7 @@ function VenueSlideshow() {
 }
 
 function About() {
+  const hours = useBusinessHours();
   return (
     <>
       {/* ── Hero ──────────────────────────────────────────────────── */}
@@ -130,11 +172,10 @@ function About() {
               Un centre de formation né dans un espace de coworking
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Co.meet Space est né en 2014 de la rencontre entre un espace de
-              coworking sfaxien et des indépendants qui se formaient entre eux.
-              Douze ans plus tard, nous sommes un organisme certifié Qualiopi qui
-              forme plus de 1 200 personnes par an — sans avoir perdu l'esprit
-              d'atelier des débuts.
+              Co.meet Space est né de la rencontre entre un espace de coworking
+              sfaxien et des indépendants qui se formaient entre eux.
+              Aujourd'hui, nous sommes un centre de formation professionnelle
+              à Sfax — avec l'esprit d'atelier des débuts.
             </p>
           </FadeIn>
         </div>
@@ -158,28 +199,14 @@ function About() {
       {/* ── Pedagogy ──────────────────────────────────────────────── */}
       <section className="container-page pb-16">
         <FadeIn>
-          <div className="surface-card grid gap-8 p-8 md:grid-cols-2 md:p-12">
-            <div>
-              <h2 className="text-headline-lg">Notre approche pédagogique</h2>
-              <p className="mt-4 text-muted-foreground">
-                70 % de pratique, 30 % d'apport théorique. Les groupes sont limités
-                à 12 personnes pour garantir du temps de parole à chacun, et chaque
-                session est évaluée à chaud puis à froid.
-              </p>
-            </div>
-            <dl className="grid grid-cols-2 gap-6">
-              {[
-                ["12", "participants max"],
-                ["70 %", "de mise en pratique"],
-                ["48 h", "de délai de réponse"],
-                ["30 j", "de suivi post-formation"],
-              ].map(([value, label]) => (
-                <div key={label} className="rounded-2xl bg-sage/60 p-5">
-                  <dt className="font-display text-2xl font-extrabold text-primary">{value}</dt>
-                  <dd className="mt-1 text-sm text-muted-foreground">{label}</dd>
-                </div>
-              ))}
-            </dl>
+          <div className="surface-card p-8 md:p-12">
+            <h2 className="text-headline-lg">Notre approche pédagogique</h2>
+            <p className="mt-4 max-w-2xl text-muted-foreground">
+              Les groupes sont limités à 15 personnes pour garantir du temps
+              de parole à chacun. Nos formateurs exercent encore leur métier —
+              ils apportent des cas réels, pas des slides. Chaque session est
+              évaluée à chaud puis à froid.
+            </p>
           </div>
         </FadeIn>
       </section>
@@ -191,9 +218,6 @@ function About() {
 
             {/* Left — info panel */}
             <div className="surface-card overflow-hidden p-8 md:p-10">
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary-fixed px-3 py-1.5 text-label-sm uppercase text-primary">
-                <Sparkles className="size-3.5" /> Visite guidée
-              </div>
               <h2 className="mt-5 text-headline-lg text-primary">
                 Un lieu vivant, pas juste des murs
               </h2>
@@ -201,26 +225,10 @@ function About() {
                 Voici le centre en images — {VENUE_IMAGES.length} photos.
                 Chaque vue montre un détail de l'espace : accueil, salles d'atelier, coins pause et zones de travail.
               </p>
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                {[
-                  ["400 m²", "d'espaces modulables"],
-                  ["3 salles", "de formation"],
-                  ["Bibliothèque", "en accès libre"],
-                  ["Salle de repos", "+ salle de jeux"],
-                ].map(([value, label]) => (
-                  <div
-                    key={label}
-                    className="rounded-2xl border border-border bg-background p-4 transition-transform duration-300 ease-out hover:-translate-y-0.5"
-                  >
-                    <p className="font-display text-2xl font-extrabold text-primary">{value}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{label}</p>
-                  </div>
-                ))}
-              </div>
             </div>
 
-            {/* Right — auto-crossfade slideshow */}
-            <VenueSlideshow />
+            {/* Right — manual carousel with auto-advance */}
+            <VenueCarousel />
           </div>
         </FadeIn>
       </section>
@@ -232,8 +240,8 @@ function About() {
             <h2 className="max-w-xl text-headline-lg">Venez visiter le centre</h2>
             <p className="mt-4 max-w-xl text-sm text-tertiary-foreground/70">
               Rte de Mahdia 5.5, Sfax 3011. Ouvert du lundi au samedi de
-              <strong> 8 h à 22 h</strong> et le dimanche de
-              <strong> 8 h à 17 h</strong>.
+              <strong> {hours.weekdayHoursProse}</strong> et le dimanche de
+              <strong> {hours.sundayHoursProse}</strong>.
             </p>
             <Link
               to="/contact"

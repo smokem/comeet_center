@@ -49,6 +49,7 @@ function parseCourse(data: Record<string, unknown>, slug: string): Course | null
     },
     sessions: Array.isArray(data["sessions"]) ? (data["sessions"] as Course["sessions"]) : [],
     featured: Boolean(data["featured"]),
+    cardTextVisibility: (data["cardTextVisibility"] as Course["cardTextVisibility"]) ?? undefined,
   };
 }
 

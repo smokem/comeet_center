@@ -1,18 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Check } from "lucide-react";
+import {
+    ArrowRight,
+    BookOpen,
+    CalendarCheck,
+    Check,
+    GraduationCap,
+    MessageCircle,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { CourseCard } from "@/components/site/CourseCard";
 import { type Course } from "@/data/courses";
 import { listCourses } from "@/lib/courses-api";
 import { VENUE_IMAGES } from "@/lib/venue-images";
+import { useBusinessHours } from "./__root";
 
-const WA_HREF = "https://wa.me/21622489100";
-const WA_NUMBER = "+216 22 489 100";
+const WA_HREF = "https://wa.me/21692489103";
+const WA_NUMBER = "+216 92 489 103";
 
 // ---------------------------------------------------------------------------
 // Venue photo helpers — resolve paths from the shared VENUE_IMAGES list
-// so the timeline and hero stay in sync with the single source of truth.
 // ---------------------------------------------------------------------------
 function venuePhoto(filename: string): string {
   const match = VENUE_IMAGES.find((img) => img.src.endsWith(filename));
@@ -31,7 +38,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Co.meet Space — Centre de formation professionnelle à Sfax" },
-      { name: "description", content: "Formations courtes en management, communication et numérique à Sfax. Appelez le +216 22 489 100." },
+      { name: "description", content: "Formations courtes en management, communication et numérique à Sfax. Contactez-nous sur WhatsApp." },
       { property: "og:title", content: "Co.meet Space — Centre de formation à Sfax" },
     ],
   }),
@@ -41,62 +48,69 @@ export const Route = createFileRoute("/")({
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
-
-// Each timeline step carries its own photo, sourced from venue-images.ts.
-// Step 3 title is "Espace de coworking" (placeholder — confirm wording before
-// shipping; description text also needs updating to match, see index.tsx note).
-const timelineMoments = [
-  {
-    time: "08h30",
-    label: "L'arrivée",
-    text: "Café, bibliothèque ouverte, wifi. Le centre accueille dès 8h du matin — pas besoin de courir.",
-    photo: venuePhoto("IMG_4061.webp"),
-  },
-  {
-    time: "10h00",
-    label: "En pleine session",
-    text: "Groupe de 12 maximum. Le formateur pratique encore son métier. Vous travaillez sur vos vrais cas.",
-    photo: venuePhoto("IMG_4058.webp"),
-  },
-  {
-    time: "13h00",
-    label: "Espace de coworking",
-    text: "Entre deux sessions, le centre reste ouvert. Postes de travail, wifi rapide, café — les participants restent, travaillent, échangent.",
-    photo: venuePhoto("IMG_4063.webp"),
-  },
-  {
-    time: "19h00",
-    label: "Le cours du soir",
-    text: "Le centre est ouvert jusqu'à 22h. Idéal pour les professionnels qui ne peuvent pas se libérer en journée.",
-    photo: venuePhoto("IMG_4053.webp"),
-  },
-];
+// timelineMoments is built at render time so the 4 times come from
+// BusinessHoursSettings rather than being hardcoded.
+function buildTimelineMoments(h: { timelineStep1: string; timelineStep2: string; timelineStep3: string; timelineStep4: string }) {
+  return [
+    {
+      time: h.timelineStep1,
+      label: "L'arrivée",
+      text: "Café, bibliothèque ouverte, wifi. Le centre accueille dès 8h 30min — pas besoin de courir.",
+      photo: venuePhoto("IMG_4061.webp"),
+    },
+    {
+      time: h.timelineStep2,
+      label: "En pleine session",
+      text: "Groupe de 15 maximum. Le formateur pratique encore son métier. Vous travaillez sur vos vrais cas.",
+      photo: venuePhoto("Training room 1.webp"),
+    },
+    {
+      time: h.timelineStep3,
+      label: "Espace de coworking",
+      text: "Entre deux sessions, le centre reste ouvert. Postes de travail, wifi rapide, café — les participants restent, travaillent, échangent.",
+      photo: venuePhoto("Coworking space.webp"),
+    },
+    {
+      time: h.timelineStep4,
+      label: "Le cours du soir",
+      text: "Le centre est ouvert jusqu'à 22h. Idéal pour les professionnels qui ne peuvent pas se libérer en journée.",
+      photo: venuePhoto("Training room 2.webp"),
+    },
+  ] as const;
+}
 
 const journeySteps = [
   {
     number: "01",
+    icon: BookOpen,
     title: "Choisissez une formation",
     text: "Management, communication, numérique ou bureautique. Filtrez par niveau et format dans le catalogue.",
     cta: null,
+    highlight: false,
   },
   {
     number: "02",
+    icon: MessageCircle,
     title: "Appelez ou écrivez sur WhatsApp",
     text: "On répond en moins de 2 minutes. On vérifie les places disponibles et on bloque votre session.",
-    cta: { label: WA_NUMBER, href: WA_HREF },
+    cta: { label: "Nous écrire sur WhatsApp", href: WA_HREF },
     highlight: true,
   },
   {
     number: "03",
+    icon: CalendarCheck,
     title: "Suivez la session",
     text: "Présentiel à Sfax, hybride ou en ligne. Supports remis le jour même, formateur joignable après.",
     cta: null,
+    highlight: false,
   },
   {
     number: "04",
+    icon: GraduationCap,
     title: "Recevez votre certificat",
     text: "Attestation de formation délivrée sous 48h. Suivi à 30 jours inclus.",
     cta: null,
+    highlight: false,
   },
 ];
 
@@ -142,12 +156,11 @@ function BookingNotification() {
               ✅ Votre place est confirmée
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Manager une équipe hybride · Lun 14h · Sfax
+              Votre formation · Sfax
             </p>
           </div>
           <span className="shrink-0 text-xs text-muted-foreground">maintenant</span>
         </div>
-        {/* Pulse ring */}
         <div className={`absolute -inset-1 rounded-2xl border-2 border-[#25D366]/30 transition-all duration-1000 ${show ? "opacity-0 scale-110" : "opacity-0"}`} />
       </div>
     </div>
@@ -155,222 +168,210 @@ function BookingNotification() {
 }
 
 // ---------------------------------------------------------------------------
-// Timeline — progress indicator bar
-// Rendered OUTSIDE the photo container on desktop (to the right of the image).
-// On mobile it appears as a small badge in the top-right corner of each photo.
-// ---------------------------------------------------------------------------
-function ProgressBar({
-  activeIndex,
-  total,
-}: {
-  activeIndex: number;
-  total: number;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className={`h-1 rounded-full transition-all duration-500 ${
-            i === activeIndex
-              ? "w-8 bg-cta"
-              : i < activeIndex
-              ? "w-4 bg-primary/40"
-              : "w-4 bg-border"
-          }`}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Sticky timeline — desktop: pinned scroll-scrub with side-by-side layout.
-// Mobile: simple stacked sequence, no pinning.
+// Timeline — DESKTOP: click-tabs (no scroll scrub). MOBILE: swipe carousel.
 // ---------------------------------------------------------------------------
 function Timeline() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const hours = useBusinessHours();
+  const timelineMoments = buildTimelineMoments(hours);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+  // Mobile carousel: track touch/pointer for swipe detection
+  const dragStartX = useRef<number | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
-    const onScroll = () => {
-      const { top, height } = container.getBoundingClientRect();
-      const progress = Math.max(0, Math.min(1, -top / (height - window.innerHeight)));
-      setActiveIndex(
-        Math.min(timelineMoments.length - 1, Math.floor(progress * timelineMoments.length)),
-      );
-    };
+  function handleDragStart(x: number) {
+    dragStartX.current = x;
+  }
 
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  function handleDragEnd(x: number) {
+    if (dragStartX.current === null) return;
+    const delta = dragStartX.current - x;
+    if (Math.abs(delta) > 40) {
+      if (delta > 0) {
+        setActiveIndex((i) => Math.min(i + 1, timelineMoments.length - 1));
+      } else {
+        setActiveIndex((i) => Math.max(i - 1, 0));
+      }
+    }
+    dragStartX.current = null;
+  }
 
   const active = timelineMoments[activeIndex]!;
 
   return (
-    <div ref={containerRef} style={{ height: `${timelineMoments.length * 100}vh` }} className="relative">
+    <div className="container-page py-16">
+      <FadeIn>
+        <p className="text-label-sm uppercase text-secondary">Une journée au centre</p>
+        <h2 className="mt-3 text-headline-lg text-primary">
+          {hours.timelineHeading}<br />Chaque heure compte.
+        </h2>
+      </FadeIn>
 
-      {/* ── DESKTOP: sticky side-by-side panel ── */}
-      <div className="sticky top-14 hidden h-[calc(100vh-3.5rem)] items-center overflow-hidden lg:flex">
-        <div className="container-page grid h-full w-full gap-8 py-12 lg:grid-cols-[1fr_1.4fr_auto] lg:items-center">
+      {/* ── DESKTOP: tab row + photo panel ── */}
+      <div className="mt-10 hidden lg:block">
+        {/* Tab buttons */}
+        <div className="flex gap-2">
+          {timelineMoments.map((m, i) => (
+            <button
+              key={m.time}
+              type="button"
+              onClick={() => setActiveIndex(i)}
+              className={`flex items-center gap-3 rounded-2xl px-5 py-3 text-left transition-all duration-200 ${
+                i === activeIndex
+                  ? "bg-primary text-primary-foreground shadow-level-2"
+                  : "bg-background border border-border text-muted-foreground hover:bg-primary/5 hover:text-foreground"
+              }`}
+            >
+              <span className={`font-display text-xl font-extrabold tabular-nums ${
+                i === activeIndex ? "text-inverse-primary" : "text-primary/40"
+              }`}>
+                {m.time}
+              </span>
+              <span className={`text-sm font-semibold ${
+                i === activeIndex ? "text-primary-foreground" : "text-foreground"
+              }`}>
+                {m.label}
+              </span>
+            </button>
+          ))}
+        </div>
 
-          {/* Col 1 — time scrubber */}
-          <div className="flex flex-col justify-center">
-            <FadeIn>
-              <p className="text-label-sm uppercase text-secondary">Une journée au centre</p>
-              <h2 className="mt-3 text-headline-lg text-primary">
-                Ouvert de 8h à 22h.<br />Chaque heure compte.
-              </h2>
-            </FadeIn>
-
-            <div className="mt-10 space-y-2">
-              {timelineMoments.map((m, i) => (
-                <button
-                  key={m.time}
-                  type="button"
-                  onClick={() => {
-                    const container = containerRef.current;
-                    if (!container) return;
-                    const targetProgress = (i + 0.5) / timelineMoments.length;
-                    const containerTop =
-                      container.getBoundingClientRect().top + window.scrollY;
-                    const scrollTarget =
-                      containerTop +
-                      targetProgress * (container.offsetHeight - window.innerHeight);
-                    window.scrollTo({ top: scrollTarget, behavior: "smooth" });
-                  }}
-                  className={`group flex w-full items-center gap-4 rounded-2xl px-4 py-3 text-left transition-all duration-300 ${
-                    i === activeIndex
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-primary/5 text-muted-foreground"
-                  }`}
-                >
-                  <span
-                    className={`font-display text-2xl font-extrabold tabular-nums transition-all ${
-                      i === activeIndex ? "text-inverse-primary" : "text-primary/30"
-                    }`}
-                  >
-                    {m.time}
-                  </span>
-                  <div className="min-w-0">
-                    <p
-                      className={`text-sm font-semibold ${
-                        i === activeIndex ? "text-primary-foreground" : "text-foreground"
-                      }`}
-                    >
-                      {m.label}
-                    </p>
-                    {i === activeIndex && (
-                      <p className="mt-0.5 text-xs leading-5 text-primary-foreground/75 line-clamp-2">
-                        {m.text}
-                      </p>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-8">
-              <a
-                href={WA_HREF}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-level-2 transition-all hover:-translate-y-0.5"
-              >
-                <WaIcon className="size-4" />
-                Venez voir le centre
-              </a>
-            </div>
-          </div>
-
-          {/* Col 2 — photo (no indicator inside) */}
-          <div
-            className="relative overflow-hidden rounded-3xl bg-primary/10"
-            style={{ height: "min(70vh, 560px)" }}
-          >
+        {/* Photo + text panel */}
+        <div className="mt-6 grid gap-8 lg:grid-cols-[1.4fr_auto] lg:items-start">
+          <div className="relative overflow-hidden rounded-3xl bg-primary/10" style={{ height: "min(60vh, 520px)" }}>
             <img
               key={active.photo}
               src={active.photo}
               alt={active.label}
-              className="h-full w-full object-cover transition-opacity duration-700"
+              className="h-full w-full object-cover transition-opacity duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/20 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-8">
-              <p className="font-display text-3xl font-extrabold text-inverse-primary">
-                {active.time}
-              </p>
-              <h3 className="mt-1 font-display text-2xl font-bold text-primary-foreground">
-                {active.label}
-              </h3>
-              <p className="mt-2 max-w-md text-sm leading-6 text-primary-foreground/80">
-                {active.text}
-              </p>
+              <p className="font-display text-3xl font-extrabold text-inverse-primary">{active.time}</p>
+              <h3 className="mt-1 font-display text-2xl font-bold text-primary-foreground">{active.label}</h3>
+              <p className="mt-2 max-w-md text-sm leading-6 text-primary-foreground/80">{active.text}</p>
             </div>
           </div>
-
-          {/* Col 3 — progress indicator, outside the photo to its right */}
-          <div className="flex items-center self-center">
-            <ProgressBar activeIndex={activeIndex} total={timelineMoments.length} />
+          {/* Progress bar — outside photo on desktop */}
+          <div className="flex items-center self-stretch pt-2">
+            <div className="flex flex-col gap-1.5">
+              {timelineMoments.map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 rounded-full transition-all duration-500 ${
+                    i === activeIndex ? "w-8 bg-cta" : i < activeIndex ? "w-4 bg-primary/40" : "w-4 bg-border"
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── MOBILE: stacked sequence, no pinning ── */}
-      <div className="lg:hidden">
-        <div className="container-page py-12">
-          <p className="text-label-sm uppercase text-secondary">Une journée au centre</p>
-          <h2 className="mt-3 text-headline-lg text-primary">
-            Ouvert de 8h à 22h.<br />Chaque heure compte.
-          </h2>
-
-          <div className="mt-8 space-y-10">
-            {timelineMoments.map((m) => (
-              <div key={m.time} className="space-y-4">
-                {/* Photo with time badge in top-right corner */}
-                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-primary/10">
-                  <img
-                    src={m.photo}
-                    alt={m.label}
-                    loading="lazy"
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
-                  {/* Time badge — top-right corner of the photo */}
-                  <div className="absolute right-3 top-3 rounded-xl bg-cta px-3 py-1.5 font-display text-sm font-extrabold text-white shadow-level-2">
-                    {m.time}
-                  </div>
-                </div>
-                {/* Text block */}
-                <div>
-                  <p className="font-display text-xl font-bold text-primary">{m.label}</p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{m.text}</p>
-                </div>
-              </div>
+      {/* ── MOBILE: swipe carousel ── */}
+      <div className="mt-8 lg:hidden">
+        {/* Swipeable photo */}
+        <div
+          ref={carouselRef}
+          className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-primary/10 cursor-grab active:cursor-grabbing select-none"
+          onMouseDown={(e) => handleDragStart(e.clientX)}
+          onMouseUp={(e) => handleDragEnd(e.clientX)}
+          onMouseLeave={() => { dragStartX.current = null; }}
+          onTouchStart={(e) => handleDragStart(e.touches[0]!.clientX)}
+          onTouchEnd={(e) => handleDragEnd(e.changedTouches[0]!.clientX)}
+        >
+          <img
+            key={active.photo}
+            src={active.photo}
+            alt={active.label}
+            className="h-full w-full object-cover transition-opacity duration-400 pointer-events-none"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-transparent to-transparent" />
+          {/* Time badge */}
+          <div className="absolute right-3 top-3 rounded-xl bg-cta px-3 py-1.5 font-display text-sm font-extrabold text-white shadow-level-2">
+            {active.time}
+          </div>
+          {/* Prev/next arrows */}
+          {activeIndex > 0 && (
+            <button
+              type="button"
+              aria-label="Précédent"
+              onClick={() => setActiveIndex((i) => i - 1)}
+              className="absolute left-3 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-primary/70 text-primary-foreground backdrop-blur-sm transition hover:bg-primary"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="size-4"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+          )}
+          {activeIndex < timelineMoments.length - 1 && (
+            <button
+              type="button"
+              aria-label="Suivant"
+              onClick={() => setActiveIndex((i) => i + 1)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-primary/70 text-primary-foreground backdrop-blur-sm transition hover:bg-primary"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="size-4"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          )}
+          {/* Dot indicators */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {timelineMoments.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Étape ${i + 1}`}
+                onClick={() => setActiveIndex(i)}
+                className={`block rounded-full transition-all duration-300 ${
+                  i === activeIndex ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/50"
+                }`}
+              />
             ))}
           </div>
-
-          <div className="mt-10">
-            <a
-              href={WA_HREF}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-level-2 transition-all hover:-translate-y-0.5"
-            >
-              <WaIcon className="size-4" />
-              Venez voir le centre
-            </a>
-          </div>
         </div>
+
+        {/* Step text */}
+        <div className="mt-4">
+          <p className="font-display text-xl font-bold text-primary">{active.label}</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{active.text}</p>
+        </div>
+
+        {/* Step tabs below */}
+        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+          {timelineMoments.map((m, i) => (
+            <button
+              key={m.time}
+              type="button"
+              onClick={() => setActiveIndex(i)}
+              className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm transition-all ${
+                i === activeIndex
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "bg-background border border-border text-muted-foreground"
+              }`}
+            >
+              <span className={`font-display font-extrabold tabular-nums ${i === activeIndex ? "text-inverse-primary" : "text-primary/40"}`}>
+                {m.time}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <a
+          href={WA_HREF}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-level-2 transition-all hover:-translate-y-0.5"
+        >
+          <WaIcon className="size-4" />
+          Venez voir le centre
+        </a>
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Journey steps (scroll-reveal numbered list)
+// Journey steps — with per-step lucide icons
 // ---------------------------------------------------------------------------
 function JourneySteps() {
   return (
@@ -388,7 +389,7 @@ function JourneySteps() {
                   : "surface-card hover:shadow-level-2"
               }`}
             >
-              {/* Step number bubble on the rail */}
+              {/* Desktop: step number on the rail */}
               <div className="hidden shrink-0 items-center justify-center lg:flex">
                 <span
                   className={`flex size-9 items-center justify-center rounded-full font-display text-sm font-extrabold ${
@@ -398,8 +399,9 @@ function JourneySteps() {
                   {step.number}
                 </span>
               </div>
+
               <div className="flex-1">
-                {/* Mobile number */}
+                {/* Mobile: number bubble */}
                 <span
                   className={`mb-2 inline-flex size-8 items-center justify-center rounded-full font-display text-xs font-extrabold lg:hidden ${
                     step.highlight ? "bg-cta text-white" : "bg-primary-fixed text-primary"
@@ -407,20 +409,27 @@ function JourneySteps() {
                 >
                   {step.number}
                 </span>
-                <h3
-                  className={`font-display text-xl font-bold ${
+
+                {/* Icon + title row */}
+                <div className="flex items-center gap-3">
+                  <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${
+                    step.highlight ? "bg-primary-foreground/15" : "bg-primary-fixed"
+                  }`}>
+                    <step.icon className={`size-5 ${step.highlight ? "text-primary-foreground" : "text-primary"}`} />
+                  </div>
+                  <h3 className={`font-display text-xl font-bold ${
                     step.highlight ? "text-primary-foreground" : "text-foreground"
-                  }`}
-                >
-                  {step.title}
-                </h3>
-                <p
-                  className={`mt-2 text-sm leading-6 ${
-                    step.highlight ? "text-primary-foreground/80" : "text-muted-foreground"
-                  }`}
-                >
+                  }`}>
+                    {step.title}
+                  </h3>
+                </div>
+
+                <p className={`mt-3 text-sm leading-6 ${
+                  step.highlight ? "text-primary-foreground/80" : "text-muted-foreground"
+                }`}>
                   {step.text}
                 </p>
+
                 {step.cta && (
                   <a
                     href={step.cta.href}
@@ -433,6 +442,7 @@ function JourneySteps() {
                   </a>
                 )}
               </div>
+
               {step.highlight && (
                 <div className="pointer-events-none absolute -right-3 -top-3 flex size-12 items-center justify-center rounded-full bg-cta text-white shadow-level-2">
                   <Check className="size-5" />
@@ -451,6 +461,7 @@ function JourneySteps() {
 // ---------------------------------------------------------------------------
 function Home() {
   const { featured } = Route.useLoaderData();
+  const hours = useBusinessHours();
 
   return (
     <>
@@ -461,12 +472,12 @@ function Home() {
 
         <div className="container-page relative grid gap-12 py-16 md:py-24 lg:grid-cols-[1.05fr_1fr] lg:items-center">
           <div className="animate-fade-in-up">
-            <p className="text-label-sm uppercase text-inverse-primary">Sfax · Lun–Sam 8h–22h · Dim 8h–17h</p>
+            <p className="text-label-sm uppercase text-inverse-primary">Sfax · {hours.tagline}</p>
             <h1 className="mt-4 text-display-lg">
               Des formations qui tiennent<br />dans le vrai travail.
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-8 text-primary-foreground/75">
-              Management, communication, numérique. Groupes de 12 maximum,
+              Management, communication, numérique. Groupes de 15 maximum,
               formateurs encore en activité. Résultats applicables dès le lundi.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
@@ -477,7 +488,7 @@ function Home() {
                 className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-6 py-3.5 font-semibold text-white shadow-level-2 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-level-3"
               >
                 <WaIcon className="size-5" />
-                {WA_NUMBER}
+                Nous contacter
               </a>
               <Link
                 to="/formations"
@@ -488,7 +499,7 @@ function Home() {
             </div>
           </div>
 
-          {/* Hero photo — real venue photo 4061 (Accueil) */}
+          {/* Hero photo */}
           <div className="relative animate-fade-in-up [animation-delay:120ms]">
             <img
               src={venuePhoto("IMG_4061.webp")}
@@ -563,7 +574,7 @@ function Home() {
                 className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-6 py-3.5 font-semibold text-white shadow-level-2 transition-all hover:-translate-y-0.5"
               >
                 <WaIcon className="size-5" />
-                Écrire maintenant — {WA_NUMBER}
+                Écrire maintenant sur WhatsApp
               </a>
             </div>
           </FadeIn>
@@ -577,12 +588,11 @@ function Home() {
           <div className="container-page">
             <p className="text-label-sm uppercase text-inverse-primary">Nous trouver</p>
             <h2 className="mt-3 max-w-xl text-display-lg">
-              Co.meet Space, Sfax.
+              Comeet Space, Sfax.
             </h2>
             <p className="mt-4 max-w-lg text-lg text-primary-foreground/70">
-              Rte de Mahdia Km 5.5, 3011 Sfax · Lun–Sam 8h–22h · Dim 8h–17h
+              Rte de Mahdia Km 5.5, 3011 Sfax · {hours.tagline}
             </p>
-            {/* Responsive map container — aspect-ratio 4/3 matches the 800×600 embed */}
             <div
               className="mt-8 w-full overflow-hidden rounded-3xl border border-primary-foreground/15 shadow-level-3"
               style={{ aspectRatio: "4/3", maxHeight: "480px" }}

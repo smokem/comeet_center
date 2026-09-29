@@ -120,7 +120,7 @@ function CourseDetail() {
             </div>
             <div className="space-y-3 px-6 py-5 text-sm text-muted-foreground">
               <p className="flex items-center gap-2"><Clock className="size-4 text-primary/70" /> {course.durationHours} heures</p>
-              <p className="flex items-center gap-2"><Users className="size-4 text-primary/70" /> 12 participants maximum</p>
+              <p className="flex items-center gap-2"><Users className="size-4 text-primary/70" /> 15 participants maximum</p>
               <p className="flex items-center gap-2"><MapPin className="size-4 text-primary/70" /> {modeLabel[course.mode]}</p>
             </div>
             <div className="border-t border-border/70 px-6 py-5">

@@ -8,17 +8,28 @@ import {
     useMatch,
     useRouter,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { ComingSoon } from "@/components/site/ComingSoon";
 import { Footer, Header } from "@/components/site/SiteChrome";
 import {
+    DEFAULT_BUSINESS_HOURS,
     DEFAULT_SETTINGS,
+    getBusinessHours,
     getComingSoonSettings,
     shouldShowComingSoon,
+    type BusinessHoursSettings,
     type ComingSoonSettings,
 } from "@/lib/settings-api";
 import appCss from "../styles.css?url";
+
+// ---------------------------------------------------------------------------
+// Business hours context — lets any page/component read live hours without
+// prop-drilling. Defaults to DEFAULT_BUSINESS_HOURS so pages never crash
+// if the context is somehow missing.
+// ---------------------------------------------------------------------------
+export const BusinessHoursContext = createContext<BusinessHoursSettings>(DEFAULT_BUSINESS_HOURS);
+export function useBusinessHours() { return useContext(BusinessHoursContext); }
 
 // ---------------------------------------------------------------------------
 // Error / 404
@@ -82,12 +93,18 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 // ---------------------------------------------------------------------------
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  loader: async (): Promise<{ comingSoon: ComingSoonSettings }> => {
+  loader: async (): Promise<{ comingSoon: ComingSoonSettings; businessHours: BusinessHoursSettings }> => {
     try {
-      const comingSoon = await getComingSoonSettings();
-      return { comingSoon };
+      const [comingSoon, businessHours] = await Promise.all([
+        getComingSoonSettings(),
+        getBusinessHours(),
+      ]);
+      return { comingSoon, businessHours };
     } catch {
-      return { comingSoon: { ...DEFAULT_SETTINGS } };
+      return {
+        comingSoon: { ...DEFAULT_SETTINGS },
+        businessHours: { ...DEFAULT_BUSINESS_HOURS },
+      };
     }
   },
 
@@ -139,17 +156,14 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const { comingSoon: ssrComingSoon } = Route.useLoaderData();
+  const { comingSoon: ssrComingSoon, businessHours: ssrBusinessHours } = Route.useLoaderData();
 
-  // Client-side live settings. Seeded from the SSR snapshot and kept current by:
-  //   1. Syncing whenever ssrComingSoon changes (router.invalidate() after admin save)
-  //   2. Polling Firestore every 3 s so other browser tabs also see changes promptly
   const [liveSettings, setLiveSettings] = useState<ComingSoonSettings>(ssrComingSoon);
+  const [liveHours, setLiveHours] = useState<BusinessHoursSettings>(ssrBusinessHours);
 
   // Keep in sync with loader re-runs (triggered by router.invalidate in admin save)
-  useEffect(() => {
-    setLiveSettings(ssrComingSoon);
-  }, [ssrComingSoon]);
+  useEffect(() => { setLiveSettings(ssrComingSoon); }, [ssrComingSoon]);
+  useEffect(() => { setLiveHours(ssrBusinessHours); }, [ssrBusinessHours]);
 
   // Background poll — catches changes made from other tabs / devices
   useEffect(() => {
@@ -158,17 +172,17 @@ function RootComponent() {
     function refresh() {
       getComingSoonSettings()
         .then((s) => { if (!cancelled) setLiveSettings(s); })
-        .catch(() => { /* keep last known value on network error */ });
+        .catch(() => {});
+      getBusinessHours()
+        .then((h) => { if (!cancelled) setLiveHours(h); })
+        .catch(() => {});
     }
 
     const id = setInterval(refresh, 3_000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  // useMatch is evaluated on both server and client from the router's matched
-  // route tree — SSR and hydration always produce the same result, no window.location.
   const isAdminRoute = useMatch({ from: "/admin", shouldThrow: false });
-
   const showComingSoon = !isAdminRoute && shouldShowComingSoon(liveSettings);
 
   if (showComingSoon) {
@@ -181,13 +195,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex min-h-screen flex-col">
-        <Header />
-        <main className="flex-1">
-          <Outlet />
-        </main>
-        <Footer />
-      </div>
+      <BusinessHoursContext.Provider value={liveHours}>
+        <div className="flex min-h-screen flex-col">
+          <Header />
+          <main className="flex-1">
+            <Outlet />
+          </main>
+          <Footer />
+        </div>
+      </BusinessHoursContext.Provider>
     </QueryClientProvider>
   );
 }

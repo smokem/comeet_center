@@ -12,7 +12,7 @@ const links = [
   { to: "/contact", label: "Contact" },
 ] as const;
 
-const WA_HREF = "https://wa.me/21622489100";
+const WA_HREF = "https://wa.me/21692489103";
 
 function WhatsAppButton({ compact = false }: { compact?: boolean }) {
   return (
@@ -161,7 +161,7 @@ export function Footer() {
                 rel="noopener noreferrer"
                 className="hover:text-primary-foreground"
               >
-                +216 22 489 100
+                +216 92 489 103
               </a>
             </li>
           </ul>

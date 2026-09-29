@@ -4,6 +4,7 @@ import { AlertCircle, Loader2, Mail, MapPin, Phone } from "lucide-react";
 import { useState } from "react";
 
 import { FadeIn } from "@/lib/fade-in";
+import { useBusinessHours } from "./__root";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -33,6 +34,7 @@ type FormState = "idle" | "sending" | "sent" | "error";
 function Contact() {
   const [formState, setFormState] = useState<FormState>("idle");
   const [sendError, setSendError] = useState<string | null>(null);
+  const hours = useBusinessHours();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -189,8 +191,8 @@ function Contact() {
                 </li>
                 <li className="flex gap-3">
                   <Phone className="mt-0.5 size-4 shrink-0 text-secondary" />
-                  <a href="tel:+21622489100" className="hover:text-primary hover:underline">
-                    +216 22 489 100
+                  <a href="tel:+21692489103" className="hover:text-primary hover:underline">
+                    +216 92 489 103
                   </a>
                 </li>
               </ul>
@@ -204,12 +206,12 @@ function Contact() {
               </div>
               <ul className="space-y-2 px-6 py-5 text-sm text-muted-foreground">
                 <li className="flex justify-between">
-                  <span>Lundi – samedi</span>
-                  <span className="font-medium text-foreground">8 h – 22 h</span>
+                  <span>{hours.weekdayLabel}</span>
+                  <span className="font-medium text-foreground">{hours.weekdayHours}</span>
                 </li>
                 <li className="flex justify-between">
-                  <span>Dimanche</span>
-                  <span className="font-medium text-foreground">8 h – 17 h</span>
+                  <span>{hours.sundayLabel}</span>
+                  <span className="font-medium text-foreground">{hours.sundayHours}</span>
                 </li>
               </ul>
             </div>
@@ -220,8 +222,8 @@ function Contact() {
               <h2 className="text-headline-md">Portes ouvertes</h2>
               <p className="mt-3 text-sm leading-7 text-muted-foreground">
                 Nos conseillers sont disponibles du lundi au samedi de
-                <strong className="text-foreground"> 8 h à 22 h</strong> et le dimanche de
-                <strong className="text-foreground"> 8 h à 17 h</strong>.
+                <strong className="text-foreground"> {hours.weekdayHoursProse}</strong> et le dimanche de
+                <strong className="text-foreground"> {hours.sundayHoursProse}</strong>.
               </p>
             </div>
           </FadeIn>
