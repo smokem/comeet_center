@@ -29,11 +29,14 @@ export default defineConfig({
   },
 
   plugins: [
-    nitro(),
+    nitro({
+      // When NITRO_PRESET env var is set to "vercel" (set this in Vercel dashboard),
+      // Nitro outputs to .vercel/output/ which Vercel reads natively.
+      // Locally (node-server preset) the output stays in .output/.
+    }),
     tanstackStart(),
     tailwindcss(),
     react(),
-    // vite-tsconfig-paths REMOVED — use resolve.tsconfigPaths above instead.
   ],
 
   // ---------------------------------------------------------------------------
