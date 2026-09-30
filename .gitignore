@@ -40,3 +40,8 @@ _setup_functions.bat
 *.njsproj
 *.sln
 *.sw?
+
+# Kiro IDE workspace config — local only, not project files
+.claude-plugin/
+steering/
+skills/

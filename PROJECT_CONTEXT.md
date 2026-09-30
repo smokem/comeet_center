@@ -2,312 +2,267 @@
 
 ## 1. Project overview
 
-Co.meet Space is a professional training-center website and admin platform for a formation business based in Sfax. The product combines a public-facing corporate site with an administrative area for managing courses, sessions, enrollments, content, and rollout status.
-
-The platform is designed to help the center:
-
-- showcase courses and sessions publicly
-- manage training catalog content without code changes
-- handle admin tasks and upcoming launch controls
-- support trainers and learners with structured workflows
-- maintain a modern, premium visual identity aligned to a training brand
+Co.meet Space is a professional training-center website and admin platform for a formation business based in Sfax, Tunisia. The product combines a public-facing corporate site with an administrative dashboard for managing courses, sessions, site content, and business hours.
 
 ---
 
-## 2. Product goals
+## 2. Technology stack
 
-- Present a polished public website for course discovery and enrollment
-- Support a course catalog with filters and detail pages
-- Make the site usable for a training center, not only for a generic business
-- Offer an admin dashboard for courses, content, and launch settings
-- Keep the codebase modular and maintainable
-- Support future AI-assisted content features and operational automation
-
----
-
-## 3. Current business model and scope
-
-### Core use cases
-
-- Public visitors browse training offerings
-- Visitors can view course details, formats, pricing, and locations
-- Staff/admins can manage course and session data
-- Trainers can manage their assigned sessions and attendance
-- Learners can enroll and track progress in future phases
-
-### In-scope v1 direction
-
-- Public marketing website
-- Course catalog and course detail pages
-- Contact and about pages
-- Admin management space
-- Basic launch gating / coming-soon system
-- Local static gallery and venue content
-
-### Out of scope / future phases
-
-- Native mobile app
-- Full LMS module with deep learner progress workflows
-- Live classroom features
-- Complex payment flows at first launch
-- Full AI tooling as a production system without review
+| Layer | Tech | Notes |
+|-------|------|-------|
+| Frontend | TanStack Start v1.168 + React 19 + Tailwind 4 + Vite 8 | SSR, file-based routing |
+| UI components | shadcn/ui (Radix UI) + Lucide icons | `src/components/ui/` |
+| Hosting | Firebase Hosting — `commit-8da1d` | Vercel also connected for CI/CD |
+| Database | Firestore | Public read, auth-gated write |
+| Auth | Firebase Auth | Email/password — admin only (`admin@comeet.space`) |
+| Images | Static `.webp` files in `public/venue/` | 11 named photos |
 
 ---
 
-## 4. Product roles
+## 3. Repository structure
 
-- Super Admin: full control over users, content, routing, configuration
-- Admin / Staff: manages course and session operations
-- Trainer: manages assigned sessions, attendance, and materials
-- Learner: browses, enrolls, tracks training outcomes
-- Visitor / guest: browses public info and contacts the business
-
----
-
-## 5. Primary user experience
-
-The app is designed around a premium, professional, modern training-center experience. The tone is:
-
-- trustworthy
-- grounded
-- human-centered
-- clean and contemporary
-- high-clarity and conversion focused
-
-The design emphasizes:
-
-- deep teal as primary brand color
-- warm orange for action and highlights
-- soft sage/slate surfaces for balance
-- large typography and whitespace for clarity
-- subtle motion and scroll-based reveal effects
-
----
-
-## 6. Technology stack
-
-### Frontend
-
-- React + TypeScript
-- Vite
-- Tailwind CSS
-- TanStack Router / TanStack Start patterns
-- Firebase client integration for auth and Firestore access
-- Local image assets served from the public folder
-
-### Backend / functions
-
-- Firebase Cloud Functions
-- Node.js + TypeScript
-- Express-style server setup for API endpoints
-- Firestore as the database layer
-
-### Supporting infrastructure
-
-- Firebase Hosting
-- Firebase Auth
-- Firestore
-- Firestore rules for public read and authenticated write access
-
----
-
-## 7. Repository structure
-
-```text
-comeet_center/
-├── README.md
-├── PRD_CoMeetSpace.md
-├── DESIGN.md
-├── STATUS.md
-├── PROJECT_CONTEXT.md
-├── package.json
-├── vite.config.ts
-├── firebase.json
-├── firestore.rules
-├── firestore.indexes.json
-├── public/
-│   ├── favicon.png
-│   ├── brand-logo.png
-│   ├── footer-logo.png
-│   └── venue/
+```
+/
 ├── src/
 │   ├── routes/
+│   │   ├── __root.tsx             # Root layout — Header + Footer + BusinessHoursContext
+│   │   ├── index.tsx              # Homepage
+│   │   ├── formations.index.tsx   # Catalog with filters
+│   │   ├── formations.$slug.tsx   # Course detail page
+│   │   ├── a-propos.tsx           # About page + VenueCarousel
+│   │   ├── contact.tsx            # Contact form + address + hours
+│   │   └── admin.tsx              # Admin dashboard (3 tabs)
 │   ├── components/
+│   │   ├── site/
+│   │   │   ├── SiteChrome.tsx     # Header + Footer
+│   │   │   ├── CourseCard.tsx     # Reusable course card (per-field visibility)
+│   │   │   └── ComingSoon.tsx     # Coming-soon gate page
+│   │   └── ui/                    # shadcn/ui components
 │   ├── lib/
-│   ├── data/
-│   ├── assets/
-│   ├── styles.css
-│   └── router.tsx
+│   │   ├── firebase.ts            # Firebase app init
+│   │   ├── auth.ts                # useAuth hook, signIn, logOut
+│   │   ├── courses-api.ts         # listCourses / getCourse — Firestore SDK
+│   │   ├── settings-api.ts        # comingSoon + businessHours Firestore settings
+│   │   ├── venue-images.ts        # VENUE_IMAGES — shared photo list
+│   │   ├── fade-in.tsx            # FadeIn / useFadeIn animation primitives
+│   │   └── env.ts                 # frontendEnv — typed VITE_* vars
+│   └── data/
+│       └── courses.ts             # Course types + formatDate / formatPrice (TND)
 ├── functions/
-│   ├── src/
-│   ├── scripts/
-│   └── package.json
-├── backend/
-│   ├── src/
-│   ├── test/
-│   └── package.json
-└── ...
+│   ├── src/                       # Cloud Function (Express API)
+│   └── scripts/
+│       ├── seed-firestore.ts      # Seeds courses collection
+│       ├── add-design-interieur.ts
+│       └── create-admin-user.ts   # Creates admin@comeet.space in Firebase Auth
+├── public/
+│   ├── brand-logo.png
+│   ├── footer-logo.png
+│   ├── favicon.png
+│   └── venue/                     # 11 real venue photos (.webp)
+├── firebase.json
+├── firestore.rules
+├── .env                           # Local secrets (not committed)
+├── AGENTS.md
+├── CHANGELOG.md
+└── PROJECT_CONTEXT.md             # This file
 ```
 
 ---
 
-## 8. Main routes and status
+## 4. Environment variables (`.env`)
+
+```
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=commit-8da1d.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=commit-8da1d
+VITE_FIREBASE_STORAGE_BUCKET=commit-8da1d.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_FIREBASE_MEASUREMENT_ID=...
+
+VITE_API_URL=http://localhost:5001/commit-8da1d/europe-west1/api
+
+VITE_EMAILJS_SERVICE_ID=service_bb3m7vm
+VITE_EMAILJS_TEMPLATE_ID=template_f88tppx
+VITE_EMAILJS_PUBLIC_KEY=H2Wj9cZD_jHFv1Dmq
+```
+
+---
+
+## 5. Routes and status
 
 | Route | Status | Notes |
-|---|---|---|
-| `/` | Works | Landing page with hero, featured courses, stats, testimonial loop, CTA |
-| `/formations` | Works | Full training catalog and filtering |
-| `/formations/$slug` | Works | Individual course detail page |
-| `/a-propos` | Works | About page + venue gallery slideshow |
-| `/contact` | Works | Contact page with form and contact details |
-| `/admin` | Loads partially | Login UI exists but admin access depends on Firebase setup |
+|-------|--------|-------|
+| `/` | ✅ Working | Hero, featured courses, timeline carousel, journey steps, booking, map |
+| `/formations` | ✅ Working | Catalog with category / level / mode filters |
+| `/formations/$slug` | ✅ Working | Course detail — objectives, syllabus, sessions, trainer |
+| `/a-propos` | ✅ Working | About page + VenueCarousel (manual + auto-advance) |
+| `/contact` | ✅ Working | EmailJS form + sidebar with live business hours |
+| `/admin` | ✅ Working | 3 tabs: Formations, Page d'attente, Horaires |
 
 ---
 
-## 9. Current app behavior
+## 6. Key data flows
 
-### Public website
+### Courses (SSR + client)
+`listCourses()` in `courses-api.ts` → Firestore `courses` collection → `Course[]`
 
-The public landing page includes:
+`parseCourse()` maps Firestore documents to the `Course` type, including `cardTextVisibility`.
 
-- hero banner with strong brand CTA
-- feature course cards
-- training stats
-- timeline-style storytelling section
-- journey steps
-- testimonial marquee
-- WhatsApp CTA integration
-- sticky header with scroll-aware behavior
+### Business hours (live)
+Root loader fetches `settings/businessHours` from Firestore in parallel with `settings/comingSoon`.
+Exposed via `BusinessHoursContext` (React context) + `useBusinessHours()` hook.
+All hardcoded hour strings on every page read from this context — no static strings.
+Polled every 3s so admin changes appear without a page reload.
 
-### About page
+### Coming-soon gate
+Root loader fetches `settings/comingSoon`. If `forceState === "show"` or current time < `targetDate`, the `<ComingSoon>` component replaces the entire site. Admin route is always exempt.
 
-The about page contains:
-
-- brand story and center values
-- pedagogy section and metrics
-- venue slideshow showing local photo assets from public/venue
-- CTA to contact the center
-
-### Course flow
-
-The product is structured around training discovery and future conversion: visitors can browse available programs, understand the format, and follow a clear next-step flow toward WhatsApp/contact booking.
+### Venue photos
+`VENUE_IMAGES` in `src/lib/venue-images.ts` is the single source of truth for all photo lists.
+Images are static `.webp` files in `public/venue/`. Labels show filenames without the `.webp` extension.
+Used by: `/a-propos` carousel, homepage hero, homepage timeline steps.
 
 ---
 
-## 10. Design system summary
+## 7. Admin dashboard
 
-### Brand colors
+Three tabs accessible at `/admin` after Firebase Auth login:
 
-- Primary: deep teal
-- Accent: vibrant orange
-- Surface: soft white, sage, slate
-- Text: dark neutral for readability
+### Formations tab
+Full CRUD for courses:
+- Fields: title, category (dropdown), level, mode, price (TND), duration, excerpt, description, objectives, syllabus, trainer (name/role/bio/initials), sessions (add/remove rows with dates/city/seats), featured toggle
+- Per-field card visibility: `cardTextVisibility` object controls which text elements show on the catalog card (badges, title, excerpt, meta, price, cta)
+- Incomplete badge: courses missing price/duration/trainer/sessions show an orange "⚠ incomplet" badge
 
-### Typography
+### Page d'attente tab
+Controls the coming-soon gate:
+- `forceState`: Auto / Forcer ON / Forcer OFF
+- `targetDate`: date/time in Africa/Tunis timezone
+- Headline (FR + EN), supporting line, CTA (type + label + value)
+- Live scaled preview
 
-- Headings: Manrope
-- Body/UI: Inter
-
-### Shape and spacing
-
-- Use high-radius geometry for cards and panels
-- Generous whitespace and 8px base spacing rhythm
-- Balanced layouts with clear section separation
-
-### Motion language
-
-The frontend uses:
-
-- fade-in transitions
-- upward motion on reveal
-- hover lifts on buttons and cards
-- sticky scroll storytelling patterns
-- slow floating ambient backgrounds
-- marquee-style continuous content motion
-
-The main animation logic is defined in the frontend utility layer and global CSS theme.
+### Horaires tab
+Edits all business hours shown site-wide — stored in `settings/businessHours`:
+- `tagline`: short string in hero + map section
+- `weekdayLabel` / `weekdayHours` / `sundayLabel` / `sundayHours`: contact page table
+- `weekdayHoursProse` / `sundayHoursProse`: long-form prose text
+- `timelineHeading`: heading of the "Une journée au centre" section
+- `timelineStep1`–`timelineStep4`: the 4 time labels (e.g. "8h 30min", "10h00")
+- Live preview panel
 
 ---
 
-## 11. Important implementation details
+## 8. Firestore schema
 
-### Coming-soon system
+### `courses` collection — document ID = slug
 
-The app includes a launch gate that can hide the public site before a target date. The logic is built around:
+```ts
+{
+  slug: string
+  title: string
+  category: string           // "Management" | "Communication" | "Numérique" | "Bureautique" | "Design"
+  level: "Débutant" | "Intermédiaire" | "Avancé"
+  mode: "presentiel" | "hybride" | "en-ligne"
+  price: number              // TND
+  durationHours: number
+  excerpt: string            // shown on catalog card
+  description: string        // shown on detail page only
+  objectives: string[]
+  syllabus: { title: string; detail: string }[]
+  trainer: { name: string; role: string; bio: string; initials: string }
+  sessions: { start: string; end: string; city: string; seatsLeft: number }[]
+  featured?: boolean
+  cardTextVisibility?: {
+    badges?: boolean
+    title?: boolean
+    excerpt?: boolean
+    meta?: boolean
+    price?: boolean
+    cta?: boolean
+  }
+}
+```
 
-- root-level gate checks
-- Firestore-backed settings
-- a preview/admin override state
-- live update polling
+### `settings/comingSoon` document
 
-This is used to control whether the site is open to the public or still in pre-launch mode.
+```ts
+{
+  targetDate: string         // ISO datetime — Africa/Tunis
+  headlineFr: string
+  headlineEn: string
+  supportingLine: string
+  ctaLabel: string
+  ctaType: "tel" | "mailto" | "url"
+  ctaValue: string
+  forceState: "auto" | "show" | "hide"
+  updatedAt: Timestamp
+  updatedBy: string
+}
+```
 
-### Venue/photo assets
+### `settings/businessHours` document
 
-The website uses static local images in the public venue folder. These are served directly through Vite and displayed in auto-advancing slideshow sections.
-
-### WhatsApp CTA pattern
-
-The project strongly favors direct conversion through WhatsApp rather than long forms. This is a recurring UX strategy throughout the site.
+```ts
+{
+  tagline: string              // "Lun–Sam 8h 30min–22h · Dim 8h 30min–17h"
+  weekdayLabel: string
+  weekdayHours: string
+  sundayLabel: string
+  sundayHours: string
+  weekdayHoursProse: string
+  sundayHoursProse: string
+  timelineHeading: string
+  timelineStep1: string        // "8h 30min"
+  timelineStep2: string        // "10h00"
+  timelineStep3: string        // "13h00"
+  timelineStep4: string        // "19h00"
+  updatedAt: Timestamp
+  updatedBy: string
+}
+```
 
 ---
 
-## 12. Key files to understand the project
+## 9. Centre info (Sfax)
 
-- README.md — project intro and local setup
-- PRD_CoMeetSpace.md — product requirements and feature vision
-- DESIGN.md — visual system, colors, typography, spacing, brand rules
-- STATUS.md — current project state, known issues, deployment notes
-- src/routes/index.tsx — public home page implementation
-- src/routes/a-propos.tsx — about page and venue gallery
-- src/routes/contact.tsx — contact page and form behavior
-- src/routes/formations.index.tsx — catalog page
-- src/routes/formations.$slug.tsx — detailed course page
-- src/components/site/SiteChrome.tsx — header and footer system
-- src/lib/fade-in.tsx — reveal animation primitive
-- src/styles.css — theme tokens and custom animations
-- src/lib/courses-api.ts — course fetching logic
-- src/lib/firebase.ts — Firebase setup
-- firestore.rules — database permissions
-- functions/scripts/seed-firestore.ts — data seeding
+- **Address:** Rte de Mahdia Km 5.5, 3011 Sfax
+- **Phone:** +216 92 489 103
+- **Email:** contact@comeetspace.com
+- **Hours:** Lun–Sam 8h 30min–22h · Dim 8h 30min–17h
+- **Admin login:** admin@comeet.space
 
 ---
 
-## 13. Current status and blockers
+## 10. Local development
 
-### Working
+```bash
+npm run dev
+# → http://localhost:5173
+```
 
-- public pages render with course data
-- course listings and detail pages work
-- venue assets and slideshow are in place
-- design system is implemented
-- site structure is established
-
-### Needs attention
-
-- admin user creation in Firebase Auth
-- Firestore rules deployment
-- coming-soon settings seeding
-- EmailJS template configuration for contact form
-- production deployment and final environment setup
+The frontend reads Firestore directly. The Functions emulator is only needed to test `/api/*` Cloud Function endpoints.
 
 ---
 
-## 14. Summary
+## 11. Deployment
 
-This project is a modern professional training-center website built with a modular frontend and Firebase-based backend infrastructure. The app is designed around a premium education brand, with a product vision that balances marketing, course discovery, trainer operations, admin control, and future AI automation.
+```bash
+npm run deploy          # Full deploy (hosting + functions + rules)
+npm run deploy:hosting  # Frontend only
+```
 
-The overall direction is clear, the frontend is already implemented with a strong identity, and the remaining work is mainly environment, deployment, and operational setup rather than a total redesign.
+GitHub repo: https://github.com/smokem/comeet_center.git  
+Vercel auto-deploys on push to `main`.
 
 ---
 
-## 15. Recommended next steps
+## 12. Known design decisions
 
-1. Validate Firebase auth setup and create the admin account.
-2. Deploy Firestore rules.
-3. Seed the coming-soon settings document.
-4. Configure the contact email template.
-5. Test the full public/admin flow.
-6. Prepare final production deployment and QA pass.
-
-This file should be treated as the single source of project reference for technical and product context.
+- **Currency:** prices displayed in TND (`formatPrice` uses `Intl.NumberFormat fr-FR` + " TND")
+- **Photos:** static `.webp` in `public/venue/`, named descriptively, captions = filename without extension
+- **WhatsApp:** primary conversion channel — phone number in all CTAs, no digits shown on buttons (label: "Nous contacter" etc.)
+- **Business hours:** fully Firestore-backed via `settings/businessHours`, editable from Admin → Horaires, defaults fallback so site never breaks if document missing
+- **cardTextVisibility:** each field defaults to `true` when absent — existing courses unaffected unless explicitly toggled in admin
+- **Group size:** 15 participants maximum (updated from 12)
+- **Timeline section:** desktop = click-tabs (no scroll-scrub), mobile = swipe carousel with arrows + dot indicators

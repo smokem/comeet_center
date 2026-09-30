@@ -7,16 +7,17 @@
  * Documents:
  *   settings/comingSoon     — coming-soon gate + content
  *   settings/businessHours  — hours displayed site-wide + timeline times
+ *
+ * Bundle strategy
+ * ---------------
+ * Reads use firebase/firestore/lite (smaller, one-time reads only).
+ * Writes lazy-import firebase/firestore (full SDK) so the extra weight is
+ * only paid on /admin where writes actually happen.
  */
 
-import {
-    doc,
-    getDoc,
-    serverTimestamp,
-    setDoc,
-} from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore/lite";
 
-import { db } from "./firebase";
+import { dbLite } from "./firebase-lite";
 
 // ---------------------------------------------------------------------------
 // Coming-soon types
@@ -82,14 +83,14 @@ export interface BusinessHoursSettings {
 }
 
 export const DEFAULT_BUSINESS_HOURS: BusinessHoursSettings = {
-  tagline: "Lun–Sam 8h–22h · Dim 8h–17h",
+  tagline: "Lun–Sam 8h 30min–22h · Dim 8h 30min–17h",
   weekdayLabel: "Lundi – samedi",
-  weekdayHours: "8 h – 22 h",
+  weekdayHours: "8h 30min – 22 h",
   sundayLabel: "Dimanche",
-  sundayHours: "8 h – 17 h",
-  weekdayHoursProse: "8 h à 22 h",
-  sundayHoursProse: "8 h à 17 h",
-  timelineHeading: "Ouvert de 8h à 22h.",
+  sundayHours: "8h 30min – 17 h",
+  weekdayHoursProse: "8h 30min à 22 h",
+  sundayHoursProse: "8h 30min à 17 h",
+  timelineHeading: "Ouvert de 8h 30min à 22h.",
   timelineStep1: "8h 30min",
   timelineStep2: "10h00",
   timelineStep3: "13h00",
@@ -99,84 +100,81 @@ export const DEFAULT_BUSINESS_HOURS: BusinessHoursSettings = {
 };
 
 // ---------------------------------------------------------------------------
-// Coming-soon: read
+// Coming-soon: read (Firestore Lite)
 // ---------------------------------------------------------------------------
-
-const COMING_SOON_REF = () => doc(db, "settings", "comingSoon");
-const BUSINESS_HOURS_REF = () => doc(db, "settings", "businessHours");
 
 export async function getComingSoonSettings(): Promise<ComingSoonSettings> {
   try {
-    const snap = await getDoc(COMING_SOON_REF());
+    const snap = await getDoc(doc(dbLite, "settings", "comingSoon"));
     if (!snap.exists()) return { ...DEFAULT_SETTINGS };
 
     const d = snap.data() as Partial<ComingSoonSettings>;
     return {
-      targetDate: typeof d.targetDate === "string" ? d.targetDate : DEFAULT_SETTINGS.targetDate,
-      headlineFr: typeof d.headlineFr === "string" ? d.headlineFr : DEFAULT_SETTINGS.headlineFr,
-      headlineEn: typeof d.headlineEn === "string" ? d.headlineEn : DEFAULT_SETTINGS.headlineEn,
-      supportingLine: typeof d.supportingLine === "string" ? d.supportingLine : DEFAULT_SETTINGS.supportingLine,
-      ctaLabel: typeof d.ctaLabel === "string" ? d.ctaLabel : DEFAULT_SETTINGS.ctaLabel,
+      targetDate:    typeof d.targetDate    === "string" ? d.targetDate    : DEFAULT_SETTINGS.targetDate,
+      headlineFr:    typeof d.headlineFr    === "string" ? d.headlineFr    : DEFAULT_SETTINGS.headlineFr,
+      headlineEn:    typeof d.headlineEn    === "string" ? d.headlineEn    : DEFAULT_SETTINGS.headlineEn,
+      supportingLine:typeof d.supportingLine=== "string" ? d.supportingLine: DEFAULT_SETTINGS.supportingLine,
+      ctaLabel:      typeof d.ctaLabel      === "string" ? d.ctaLabel      : DEFAULT_SETTINGS.ctaLabel,
       ctaType: (d.ctaType === "tel" || d.ctaType === "mailto" || d.ctaType === "url")
         ? d.ctaType : DEFAULT_SETTINGS.ctaType,
-      ctaValue: typeof d.ctaValue === "string" ? d.ctaValue : DEFAULT_SETTINGS.ctaValue,
+      ctaValue:      typeof d.ctaValue      === "string" ? d.ctaValue      : DEFAULT_SETTINGS.ctaValue,
       forceState: (d.forceState === "auto" || d.forceState === "show" || d.forceState === "hide")
         ? d.forceState : DEFAULT_SETTINGS.forceState,
       updatedAt: null,
       updatedBy: typeof d.updatedBy === "string" ? d.updatedBy : "",
     };
   } catch (err) {
-    if (typeof console !== "undefined") {
-      console.warn("[settings-api] Could not fetch comingSoon settings, using defaults:", err instanceof Error ? err.message : err);
-    }
+    console.warn("[settings-api] getComingSoonSettings failed, using defaults:",
+      err instanceof Error ? err.message : err);
     return { ...DEFAULT_SETTINGS };
   }
 }
 
 // ---------------------------------------------------------------------------
-// Business hours: read
+// Business hours: read (Firestore Lite)
 // ---------------------------------------------------------------------------
 
 export async function getBusinessHours(): Promise<BusinessHoursSettings> {
   try {
-    const snap = await getDoc(BUSINESS_HOURS_REF());
+    const snap = await getDoc(doc(dbLite, "settings", "businessHours"));
     if (!snap.exists()) return { ...DEFAULT_BUSINESS_HOURS };
 
     const d = snap.data() as Partial<BusinessHoursSettings>;
-    // Fall back to default for each key so partial documents work fine
     return {
-      tagline:            typeof d.tagline            === "string" ? d.tagline            : DEFAULT_BUSINESS_HOURS.tagline,
-      weekdayLabel:       typeof d.weekdayLabel       === "string" ? d.weekdayLabel       : DEFAULT_BUSINESS_HOURS.weekdayLabel,
-      weekdayHours:       typeof d.weekdayHours       === "string" ? d.weekdayHours       : DEFAULT_BUSINESS_HOURS.weekdayHours,
-      sundayLabel:        typeof d.sundayLabel        === "string" ? d.sundayLabel        : DEFAULT_BUSINESS_HOURS.sundayLabel,
-      sundayHours:        typeof d.sundayHours        === "string" ? d.sundayHours        : DEFAULT_BUSINESS_HOURS.sundayHours,
-      weekdayHoursProse:  typeof d.weekdayHoursProse  === "string" ? d.weekdayHoursProse  : DEFAULT_BUSINESS_HOURS.weekdayHoursProse,
-      sundayHoursProse:   typeof d.sundayHoursProse   === "string" ? d.sundayHoursProse   : DEFAULT_BUSINESS_HOURS.sundayHoursProse,
-      timelineHeading:    typeof d.timelineHeading    === "string" ? d.timelineHeading    : DEFAULT_BUSINESS_HOURS.timelineHeading,
-      timelineStep1:      typeof d.timelineStep1      === "string" ? d.timelineStep1      : DEFAULT_BUSINESS_HOURS.timelineStep1,
-      timelineStep2:      typeof d.timelineStep2      === "string" ? d.timelineStep2      : DEFAULT_BUSINESS_HOURS.timelineStep2,
-      timelineStep3:      typeof d.timelineStep3      === "string" ? d.timelineStep3      : DEFAULT_BUSINESS_HOURS.timelineStep3,
-      timelineStep4:      typeof d.timelineStep4      === "string" ? d.timelineStep4      : DEFAULT_BUSINESS_HOURS.timelineStep4,
+      tagline:           typeof d.tagline           === "string" ? d.tagline           : DEFAULT_BUSINESS_HOURS.tagline,
+      weekdayLabel:      typeof d.weekdayLabel      === "string" ? d.weekdayLabel      : DEFAULT_BUSINESS_HOURS.weekdayLabel,
+      weekdayHours:      typeof d.weekdayHours      === "string" ? d.weekdayHours      : DEFAULT_BUSINESS_HOURS.weekdayHours,
+      sundayLabel:       typeof d.sundayLabel       === "string" ? d.sundayLabel       : DEFAULT_BUSINESS_HOURS.sundayLabel,
+      sundayHours:       typeof d.sundayHours       === "string" ? d.sundayHours       : DEFAULT_BUSINESS_HOURS.sundayHours,
+      weekdayHoursProse: typeof d.weekdayHoursProse === "string" ? d.weekdayHoursProse : DEFAULT_BUSINESS_HOURS.weekdayHoursProse,
+      sundayHoursProse:  typeof d.sundayHoursProse  === "string" ? d.sundayHoursProse  : DEFAULT_BUSINESS_HOURS.sundayHoursProse,
+      timelineHeading:   typeof d.timelineHeading   === "string" ? d.timelineHeading   : DEFAULT_BUSINESS_HOURS.timelineHeading,
+      timelineStep1:     typeof d.timelineStep1     === "string" ? d.timelineStep1     : DEFAULT_BUSINESS_HOURS.timelineStep1,
+      timelineStep2:     typeof d.timelineStep2     === "string" ? d.timelineStep2     : DEFAULT_BUSINESS_HOURS.timelineStep2,
+      timelineStep3:     typeof d.timelineStep3     === "string" ? d.timelineStep3     : DEFAULT_BUSINESS_HOURS.timelineStep3,
+      timelineStep4:     typeof d.timelineStep4     === "string" ? d.timelineStep4     : DEFAULT_BUSINESS_HOURS.timelineStep4,
       updatedAt: null,
       updatedBy: typeof d.updatedBy === "string" ? d.updatedBy : "",
     };
   } catch (err) {
-    if (typeof console !== "undefined") {
-      console.warn("[settings-api] Could not fetch businessHours settings, using defaults:", err instanceof Error ? err.message : err);
-    }
+    console.warn("[settings-api] getBusinessHours failed, using defaults:",
+      err instanceof Error ? err.message : err);
     return { ...DEFAULT_BUSINESS_HOURS };
   }
 }
 
 // ---------------------------------------------------------------------------
-// Coming-soon: write
+// Coming-soon: write (full Firestore — lazy-imported, admin only)
 // ---------------------------------------------------------------------------
 
 export async function saveComingSoonSettings(
   settings: Omit<ComingSoonSettings, "updatedAt" | "updatedBy">,
   userEmail: string,
 ): Promise<void> {
-  await setDoc(COMING_SOON_REF(), {
+  // Lazy import keeps firebase/firestore out of the public-page bundle.
+  const { doc: docFull, setDoc, serverTimestamp } = await import("firebase/firestore");
+  const { db } = await import("./firebase");
+  await setDoc(docFull(db, "settings", "comingSoon"), {
     ...settings,
     updatedAt: serverTimestamp(),
     updatedBy: userEmail,
@@ -184,14 +182,16 @@ export async function saveComingSoonSettings(
 }
 
 // ---------------------------------------------------------------------------
-// Business hours: write
+// Business hours: write (full Firestore — lazy-imported, admin only)
 // ---------------------------------------------------------------------------
 
 export async function saveBusinessHours(
   settings: Omit<BusinessHoursSettings, "updatedAt" | "updatedBy">,
   userEmail: string,
 ): Promise<void> {
-  await setDoc(BUSINESS_HOURS_REF(), {
+  const { doc: docFull, setDoc, serverTimestamp } = await import("firebase/firestore");
+  const { db } = await import("./firebase");
+  await setDoc(docFull(db, "settings", "businessHours"), {
     ...settings,
     updatedAt: serverTimestamp(),
     updatedBy: userEmail,
@@ -199,13 +199,11 @@ export async function saveBusinessHours(
 }
 
 // ---------------------------------------------------------------------------
-// Gate logic
+// Gate logic (pure — no Firebase dependency)
 // ---------------------------------------------------------------------------
 
 export function shouldShowComingSoon(settings: ComingSoonSettings): boolean {
   if (settings.forceState === "show") return true;
   if (settings.forceState === "hide") return false;
-  const now = new Date();
-  const target = new Date(settings.targetDate);
-  return now < target;
+  return new Date() < new Date(settings.targetDate);
 }

@@ -5,6 +5,7 @@ import { CourseCard } from "@/components/site/CourseCard";
 import { levels, modeLabel, type Course, type Mode } from "@/data/courses";
 import { listCourses } from "@/lib/courses-api";
 import { FadeIn } from "@/lib/fade-in";
+import { catalogBreadcrumbJsonLd, pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/formations/")({
   loader: async (): Promise<{ courses: Course[] }> => {
@@ -17,11 +18,12 @@ export const Route = createFileRoute("/formations/")({
   },
 
   head: () => ({
-    meta: [
-      { title: "Catalogue de formations — Co.meet Space" },
-      { name: "description", content: "Toutes les formations Co.meet Space : management, communication, numérique et bureautique." },
-      { property: "og:title", content: "Catalogue de formations — Co.meet Space" },
-    ],
+    ...pageHead({
+      title:       "Catalogue de formations — Co.meet Space",
+      description: "Toutes les formations Co.meet Space à Sfax : management, communication, numérique et bureautique. Présentiel, hybride ou en ligne. Inscriptions ouvertes.",
+      path:        "/formations",
+      jsonLd:      catalogBreadcrumbJsonLd(),
+    }),
   }),
 
   component: Catalog,

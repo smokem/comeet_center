@@ -1,30 +1,36 @@
+/**
+ * firebase.ts
+ *
+ * Full Firebase SDK — Auth + full Firestore (needed for serverTimestamp and
+ * real-time writes). Only imported by /admin and the write paths in
+ * settings-api.ts (lazy dynamic import).
+ *
+ * Public pages use firebase-lite.ts instead, which provides a lighter
+ * Firestore Lite instance for one-time reads only.
+ */
+
 import { getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 import { frontendEnv } from "./env";
 
-// ---------------------------------------------------------------------------
-// Firebase initialisation
-//
-// Guard against empty apiKey during SSR cold starts — if the key is missing
-// we still initialise with placeholder values so the module doesn't throw
-// at import time. Actual Firestore/Auth calls will fail gracefully inside
-// their own try/catch blocks in the loaders.
-// ---------------------------------------------------------------------------
-
 const firebaseConfig = {
   ...frontendEnv.firebase,
-  // Ensure we never pass an empty string as apiKey — Firebase throws immediately
   apiKey: frontendEnv.firebase.apiKey || "placeholder-api-key-ssr",
 };
 
+// Re-use the app already created by firebase-lite.ts if it loaded first,
+// so we never call initializeApp twice with the same config.
 const app =
   getApps().length === 0
     ? initializeApp(firebaseConfig)
     : getApps()[0]!;
 
-export const auth = getAuth(app);
+/** Full Firestore — supports serverTimestamp, transactions, writes. Admin only. */
 export const db = getFirestore(app);
-export { app };
 
+/** Firebase Auth — admin login only. */
+export const auth = getAuth(app);
+
+export { app };

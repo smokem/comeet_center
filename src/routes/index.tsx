@@ -1,29 +1,42 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-    ArrowRight,
-    BookOpen,
-    CalendarCheck,
-    Check,
-    GraduationCap,
-    MessageCircle,
+  ArrowRight,
+  BookOpen,
+  CalendarCheck,
+  Check,
+  GraduationCap,
+  MessageCircle,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { CourseCard } from "@/components/site/CourseCard";
+import { FaqSection } from "@/components/site/FaqSection";
+import { Img } from "@/components/site/Img";
+import { ImageGallery } from "@/components/ui/image-gallery";
 import { type Course } from "@/data/courses";
+import { buildFaq } from "@/data/faq";
 import { listCourses } from "@/lib/courses-api";
-import { VENUE_IMAGES } from "@/lib/venue-images";
+import { FadeIn, useFadeIn } from "@/lib/fade-in";
+import { homepageJsonLd, pageHead } from "@/lib/seo";
+import { venueImageById, type VenueImage } from "@/lib/venue-images";
 import { useBusinessHours } from "./__root";
 
 const WA_HREF = "https://wa.me/21692489103";
 const WA_NUMBER = "+216 92 489 103";
 
 // ---------------------------------------------------------------------------
-// Venue photo helpers — resolve paths from the shared VENUE_IMAGES list
+// Venue photo helper — look up by Cloudinary publicId
 // ---------------------------------------------------------------------------
-function venuePhoto(filename: string): string {
-  const match = VENUE_IMAGES.find((img) => img.src.endsWith(filename));
-  return match?.src ?? `/venue/${filename}`;
+function venueImage(publicId: string): VenueImage {
+  return (
+    venueImageById(publicId) ?? {
+      publicId,
+      label: publicId,
+      alt:   publicId,
+      width: 4032,
+      height: 3024,
+    }
+  );
 }
 
 export const Route = createFileRoute("/")({
@@ -36,11 +49,12 @@ export const Route = createFileRoute("/")({
     }
   },
   head: () => ({
-    meta: [
-      { title: "Co.meet Space — Centre de formation professionnelle à Sfax" },
-      { name: "description", content: "Formations courtes en management, communication et numérique à Sfax. Contactez-nous sur WhatsApp." },
-      { property: "og:title", content: "Co.meet Space — Centre de formation à Sfax" },
-    ],
+    ...pageHead({
+      title:       "Co.meet Space — Centre de formation professionnelle à Sfax",
+      description: "Formations courtes en management, communication et numérique à Sfax. Groupes de 15 max, formateurs praticiens. Inscription rapide sur WhatsApp.",
+      path:        "/",
+      jsonLd:      homepageJsonLd(),
+    }),
   }),
   component: Home,
 });
@@ -56,25 +70,25 @@ function buildTimelineMoments(h: { timelineStep1: string; timelineStep2: string;
       time: h.timelineStep1,
       label: "L'arrivée",
       text: "Café, bibliothèque ouverte, wifi. Le centre accueille dès 8h 30min — pas besoin de courir.",
-      photo: venuePhoto("IMG_4061.webp"),
+      image: venueImage("accueil-du-centre"),
     },
     {
       time: h.timelineStep2,
       label: "En pleine session",
       text: "Groupe de 15 maximum. Le formateur pratique encore son métier. Vous travaillez sur vos vrais cas.",
-      photo: venuePhoto("Training room 1.webp"),
+      image: venueImage("salle_de_formation"),
     },
     {
       time: h.timelineStep3,
       label: "Espace de coworking",
       text: "Entre deux sessions, le centre reste ouvert. Postes de travail, wifi rapide, café — les participants restent, travaillent, échangent.",
-      photo: venuePhoto("Coworking space.webp"),
+      image: venueImage("coworking-space"),
     },
     {
       time: h.timelineStep4,
       label: "Le cours du soir",
       text: "Le centre est ouvert jusqu'à 22h. Idéal pour les professionnels qui ne peuvent pas se libérer en journée.",
-      photo: venuePhoto("Training room 2.webp"),
+      image: venueImage("salle-formation"),
     },
   ] as const;
 }
@@ -126,8 +140,6 @@ function WaIcon({ className }: { className?: string }) {
   );
 }
 
-import { FadeIn, useFadeIn } from "@/lib/fade-in";
-
 // ---------------------------------------------------------------------------
 // Notification animation
 // ---------------------------------------------------------------------------
@@ -174,6 +186,7 @@ function Timeline() {
   const hours = useBusinessHours();
   const timelineMoments = buildTimelineMoments(hours);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   // Mobile carousel: track touch/pointer for swipe detection
   const dragStartX = useRef<number | null>(null);
@@ -222,11 +235,6 @@ function Timeline() {
                   : "bg-background border border-border text-muted-foreground hover:bg-primary/5 hover:text-foreground"
               }`}
             >
-              <span className={`font-display text-xl font-extrabold tabular-nums ${
-                i === activeIndex ? "text-inverse-primary" : "text-primary/40"
-              }`}>
-                {m.time}
-              </span>
               <span className={`text-sm font-semibold ${
                 i === activeIndex ? "text-primary-foreground" : "text-foreground"
               }`}>
@@ -239,16 +247,19 @@ function Timeline() {
         {/* Photo + text panel */}
         <div className="mt-6 grid gap-8 lg:grid-cols-[1.4fr_auto] lg:items-start">
           <div className="relative overflow-hidden rounded-3xl bg-primary/10" style={{ height: "min(60vh, 520px)" }}>
-            <img
-              key={active.photo}
-              src={active.photo}
-              alt={active.label}
-              className="h-full w-full object-cover transition-opacity duration-500"
+            <Img
+              key={active.image.publicId}
+              image={active.image}
+              sizes="(min-width: 1024px) 58vw, 100vw"
+              className="h-full w-full object-cover transition-opacity duration-500 cursor-zoom-in"
+              onClick={() => setGalleryOpen(true)}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/20 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-8">
-              <p className="font-display text-3xl font-extrabold text-inverse-primary">{active.time}</p>
-              <h3 className="mt-1 font-display text-2xl font-bold text-primary-foreground">{active.label}</h3>
+            <div
+              className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/20 to-transparent cursor-zoom-in"
+              onClick={() => setGalleryOpen(true)}
+            />
+            <div className="absolute bottom-0 left-0 right-0 p-8 pointer-events-none">
+              <h3 className="font-display text-2xl font-bold text-primary-foreground">{active.label}</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-primary-foreground/80">{active.text}</p>
             </div>
           </div>
@@ -270,36 +281,50 @@ function Timeline() {
 
       {/* ── MOBILE: swipe carousel ── */}
       <div className="mt-8 lg:hidden">
-        {/* Swipeable photo */}
+        {/* Swipeable photo — touch-action:pan-y keeps vertical scroll working */}
         <div
           ref={carouselRef}
           className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-primary/10 cursor-grab active:cursor-grabbing select-none"
+          style={{ touchAction: "pan-y" }}
           onMouseDown={(e) => handleDragStart(e.clientX)}
           onMouseUp={(e) => handleDragEnd(e.clientX)}
           onMouseLeave={() => { dragStartX.current = null; }}
           onTouchStart={(e) => handleDragStart(e.touches[0]!.clientX)}
           onTouchEnd={(e) => handleDragEnd(e.changedTouches[0]!.clientX)}
         >
-          <img
-            key={active.photo}
-            src={active.photo}
-            alt={active.label}
+          <Img
+            key={active.image.publicId}
+            image={active.image}
+            sizes="100vw"
             className="h-full w-full object-cover transition-opacity duration-400 pointer-events-none"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-transparent to-transparent" />
-          {/* Time badge */}
-          <div className="absolute right-3 top-3 rounded-xl bg-cta px-3 py-1.5 font-display text-sm font-extrabold text-white shadow-level-2">
-            {active.time}
+          {/* Preload next slide — lazy fetch, visually hidden */}
+          {activeIndex < timelineMoments.length - 1 && (
+            <Img
+              image={timelineMoments[activeIndex + 1]!.image}
+              sizes="1px"
+              className="sr-only pointer-events-none"
+              aria-hidden="true"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-transparent to-transparent pointer-events-none" />
+          {/* Label overlay — no time */}
+          <div
+            className="absolute inset-0 cursor-zoom-in"
+            onClick={() => setGalleryOpen(true)}
+          />
+          <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none">
+            <p className="font-display text-lg font-bold text-primary-foreground">{active.label}</p>
           </div>
-          {/* Prev/next arrows */}
+          {/* Prev/next arrows — 44×44 px touch targets */}
           {activeIndex > 0 && (
             <button
               type="button"
               aria-label="Précédent"
               onClick={() => setActiveIndex((i) => i - 1)}
-              className="absolute left-3 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-primary/70 text-primary-foreground backdrop-blur-sm transition hover:bg-primary"
+              className="absolute left-3 top-1/2 -translate-y-1/2 flex size-11 items-center justify-center rounded-full bg-primary/70 text-primary-foreground transition hover:bg-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="size-4"><path d="M15 18l-6-6 6-6"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="size-5" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
             </button>
           )}
           {activeIndex < timelineMoments.length - 1 && (
@@ -307,23 +332,25 @@ function Timeline() {
               type="button"
               aria-label="Suivant"
               onClick={() => setActiveIndex((i) => i + 1)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-primary/70 text-primary-foreground backdrop-blur-sm transition hover:bg-primary"
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex size-11 items-center justify-center rounded-full bg-primary/70 text-primary-foreground transition hover:bg-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="size-4"><path d="M9 18l6-6-6-6"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="size-5" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
             </button>
           )}
-          {/* Dot indicators */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {/* Dot indicators — each has a ≥44px invisible tap area via padding */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
             {timelineMoments.map((_, i) => (
               <button
                 key={i}
                 type="button"
                 aria-label={`Étape ${i + 1}`}
                 onClick={() => setActiveIndex(i)}
-                className={`block rounded-full transition-all duration-300 ${
+                className="flex items-center justify-center p-3"
+              >
+                <span className={`block rounded-full transition-all duration-300 ${
                   i === activeIndex ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/50"
-                }`}
-              />
+                }`} />
+              </button>
             ))}
           </div>
         </div>
@@ -347,9 +374,7 @@ function Timeline() {
                   : "bg-background border border-border text-muted-foreground"
               }`}
             >
-              <span className={`font-display font-extrabold tabular-nums ${i === activeIndex ? "text-inverse-primary" : "text-primary/40"}`}>
-                {m.time}
-              </span>
+              <span className="font-semibold">{m.label}</span>
             </button>
           ))}
         </div>
@@ -366,6 +391,15 @@ function Timeline() {
           Venez voir le centre
         </a>
       </div>
+
+      {/* Lightbox — accordion gallery */}
+      {galleryOpen && (
+        <ImageGallery
+          images={timelineMoments.map((m) => m.image)}
+          initialIndex={activeIndex}
+          onClose={() => setGalleryOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -471,12 +505,17 @@ function Home() {
         <div className="pointer-events-none absolute -bottom-32 left-1/3 size-80 rounded-full bg-cta/10 animate-float-slow [animation-delay:-4s]" />
 
         <div className="container-page relative grid gap-12 py-16 md:py-24 lg:grid-cols-[1.05fr_1fr] lg:items-center">
-          <div className="animate-fade-in-up">
+          <div className="">
             <p className="text-label-sm uppercase text-inverse-primary">Sfax · {hours.tagline}</p>
             <h1 className="mt-4 text-display-lg">
               Des formations qui tiennent<br />dans le vrai travail.
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-8 text-primary-foreground/75">
+            {/* Quotable entity sentence for AI assistants and search crawlers */}
+            <p className="mt-3 text-base font-medium text-primary-foreground/90">
+              Co.meet Space est un centre de formation professionnelle à Sfax, Tunisie,
+              spécialisé en management, communication, numérique et bureautique.
+            </p>
+            <p className="mt-3 max-w-xl text-lg leading-8 text-primary-foreground/75">
               Management, communication, numérique. Groupes de 15 maximum,
               formateurs encore en activité. Résultats applicables dès le lundi.
             </p>
@@ -499,14 +538,14 @@ function Home() {
             </div>
           </div>
 
-          {/* Hero photo */}
-          <div className="relative animate-fade-in-up [animation-delay:120ms]">
-            <img
-              src={venuePhoto("IMG_4061.webp")}
-              alt="Accueil du centre Co.meet Space à Sfax"
-              width={1600}
-              height={1200}
-              className="w-full rounded-3xl border border-primary-foreground/15 object-cover shadow-level-3 transition-transform duration-500 ease-out hover:scale-[1.01]"
+          {/* Hero photo — priority (eager + fetchpriority=high), explicit aspect ratio
+              so mobile layout reserves space before the image is fetched */}
+          <div className="relative aspect-[4/3] rounded-3xl bg-primary/20">
+            <Img
+              image={venueImage("accueil-du-centre")}
+              priority
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className="absolute inset-0 h-full w-full rounded-3xl border border-primary-foreground/15 object-cover shadow-level-3 transition-transform duration-500 ease-out hover:scale-[1.01]"
             />
           </div>
         </div>
@@ -581,6 +620,9 @@ function Home() {
           <BookingNotification />
         </div>
       </section>
+
+      {/* ── FAQ ──────────────────────────────────────────────────── */}
+      <FaqSection items={buildFaq(hours)} />
 
       {/* ── Location map ──────────────────────────────────────────── */}
       <section className="bg-primary py-20 text-primary-foreground">

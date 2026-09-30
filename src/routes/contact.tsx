@@ -4,15 +4,16 @@ import { AlertCircle, Loader2, Mail, MapPin, Phone } from "lucide-react";
 import { useState } from "react";
 
 import { FadeIn } from "@/lib/fade-in";
+import { pageHead } from "@/lib/seo";
 import { useBusinessHours } from "./__root";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
-    meta: [
-      { title: "Contact et devis — Co.meet Space" },
-      { name: "description", content: "Contactez le centre de formation Co.meet Space à Sfax : inscription, formation intra-entreprise ou devis. Réponse sous 48 h." },
-      { property: "og:title", content: "Contact et devis — Co.meet Space" },
-    ],
+    ...pageHead({
+      title:       "Contact et devis — Co.meet Space Sfax",
+      description: "Contactez Co.meet Space à Sfax : inscription à une session, formation intra-entreprise ou devis sur mesure. Réponse sous 48 h. Tél. +216 92 489 103.",
+      path:        "/contact",
+    }),
   }),
   component: Contact,
 });
@@ -61,10 +62,10 @@ function Contact() {
 
     try {
       await emailjs.send(
-        import.meta.env.VITE_EMAILJS_SERVICE_ID,
-        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+        import.meta.env["VITE_EMAILJS_SERVICE_ID"] as string,
+        import.meta.env["VITE_EMAILJS_TEMPLATE_ID"] as string,
         { name, email, message, company, course },
-        import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
+        import.meta.env["VITE_EMAILJS_PUBLIC_KEY"] as string,
       );
       setFormState("sent");
       form.reset();

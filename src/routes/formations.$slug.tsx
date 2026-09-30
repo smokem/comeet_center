@@ -4,6 +4,7 @@ import { ArrowLeft, CalendarDays, Check, Clock, MapPin, Users } from "lucide-rea
 import { formatDate, formatPrice, modeLabel, type Course } from "@/data/courses";
 import { getCourse } from "@/lib/courses-api";
 import { FadeIn } from "@/lib/fade-in";
+import { courseJsonLd, pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/formations/$slug")({
   loader: async ({ params }): Promise<{ course: Course }> => {
@@ -17,15 +18,20 @@ export const Route = createFileRoute("/formations/$slug")({
   },
 
   head: ({ loaderData }) => {
-    if (!loaderData) return { meta: [{ title: "Formation introuvable — Co.meet Space" }, { name: "robots", content: "noindex" }] };
+    if (!loaderData) return {
+      ...pageHead({ title: "Formation introuvable", description: "Cette formation n'existe pas.", path: "/formations", noindex: true }),
+    };
     const { course } = loaderData;
+    const desc = course.excerpt.length >= 120
+      ? course.excerpt.slice(0, 157) + "…"
+      : `${course.excerpt} — ${course.durationHours}h, ${course.level}, ${modeLabel[course.mode]}. Sfax, Tunisie.`;
     return {
-      meta: [
-        { title: `${course.title} — Formation Co.meet Space` },
-        { name: "description", content: course.excerpt },
-        { property: "og:title", content: `${course.title} — Co.meet Space` },
-        { property: "og:description", content: course.excerpt },
-      ],
+      ...pageHead({
+        title:   `${course.title} — Formation Co.meet Space`,
+        description: desc,
+        path:    `/formations/${course.slug}`,
+        jsonLd:  courseJsonLd(course),
+      }),
     };
   },
 
@@ -52,6 +58,12 @@ function CourseDetail() {
             </div>
             <h1 className="mt-5 max-w-3xl text-display-lg">{course.title}</h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-primary-foreground/75">{course.description}</p>
+            {/* Visible structured facts for SEO and AI crawlers */}
+            <p className="mt-4 text-sm text-primary-foreground/60">
+              {course.durationHours}h · {course.level} · {modeLabel[course.mode]}
+              {course.price > 0 ? ` · ${formatPrice(course.price)} / personne` : ""}
+              {" · Sfax, Tunisie · Co.meet Space"}
+            </p>
           </FadeIn>
         </div>
       </section>
