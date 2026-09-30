@@ -1,5 +1,3 @@
-import { resolve } from "node:path";
-
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
@@ -10,13 +8,14 @@ import { defineConfig } from "vite";
 // IMPORTANT: set `root` explicitly so Vite uses THIS directory as the
 // project root when crawling for tsconfig.json / package.json.
 //
-// Without this, Vite (via the now-removed vite-tsconfig-paths plugin and also
-// the native tsconfigPaths resolver) walks UP the directory tree and finds
-// C:\Users\User\package.json + pnpm-workspace.yaml, which causes it to scan
-// ALL projects on the machine, printing dozens of "[tsconfig-paths] parse
-// error" warnings and consuming 34–80% of build time.
+// Without this, Vite walks UP the directory tree and finds
+// C:\Users\User\package.json + pnpm-workspace.yaml, scanning ALL projects
+// on the machine and printing dozens of parse-error warnings.
+//
+// import.meta.dirname is used instead of __dirname — required by the Vite 8
+// native config loader (avoids the "unsupported __dirname" warning).
 // ---------------------------------------------------------------------------
-const projectRoot = resolve(__dirname);
+const projectRoot = import.meta.dirname;
 
 export default defineConfig({
   // Pin the root so nothing escapes this directory
