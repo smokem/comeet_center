@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  sitemap.xml — Co.meet Space
+  https://comeetspace.com
+  Canonical URLs use no trailing slash (matches <link rel="canonical"> in src/lib/seo.ts).
+  /admin is intentionally excluded (auth-gated, noindex).
+  Course URLs mirror the documents in the Firestore `courses` collection (doc ID = slug).
+-->
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- ── Page principale ─────────────────────────────────────────────── -->
+  <url>
+    <loc>https://comeetspace.com</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1200,h_630,c_fill/accueil-du-centre</image:loc>
+      <image:title>Accueil du centre Co.meet Space à Sfax</image:title>
+      <image:caption>Centre de formation professionnelle Co.meet Space, Sfax, Tunisie</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/coworking-space</image:loc>
+      <image:title>Espace de coworking Co.meet Space</image:title>
+    </image:image>
+  </url>
+
+  <!-- ── Catalogue ───────────────────────────────────────────────────── -->
+  <url>
+    <loc>https://comeetspace.com/formations</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/salle_de_formation</image:loc>
+      <image:title>Salle de formation Co.meet Space</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/salle-de-reunion</image:loc>
+      <image:title>Salle de réunion équipée</image:title>
+    </image:image>
+  </url>
+
+  <!-- ── À propos ────────────────────────────────────────────────────── -->
+  <url>
+    <loc>https://comeetspace.com/a-propos</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/bibliotheque</image:loc>
+      <image:title>Bibliothèque du centre Co.meet Space</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/coworking-space</image:loc>
+      <image:title>Espace de coworking</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/salle-de-reunion</image:loc>
+      <image:title>Salle de réunion</image:title>
+    </image:image>
+  </url>
+
+  <!-- ── Contact ─────────────────────────────────────────────────────── -->
+  <url>
+    <loc>https://comeetspace.com/contact</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/accueil-du-centre</image:loc>
+      <image:title>Accueil du centre Co.meet Space</image:title>
+    </image:image>
+  </url>
+
+  <!-- ── Formations (documents Firestore) ────────────────────────────── -->
+  <url>
+    <loc>https://comeetspace.com/formations/management-equipe-hybride</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/salle_de_formation</image:loc>
+      <image:title>Manager une équipe hybride — Co.meet Space</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://comeetspace.com/formations/prise-de-parole-en-public</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/salle_de_formation</image:loc>
+      <image:title>Prise de parole en public — Co.meet Space</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://comeetspace.com/formations/ia-generative-au-quotidien</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/salle_de_formation</image:loc>
+      <image:title>IA générative au quotidien — Co.meet Space</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://comeetspace.com/formations/gestion-de-projet-agile</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/salle_de_formation</image:loc>
+      <image:title>Gestion de projet agile — Co.meet Space</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://comeetspace.com/formations/bureautique-avancee-excel</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/salle_de_formation</image:loc>
+      <image:title>Excel avancé et tableaux de bord — Co.meet Space</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://comeetspace.com/formations/accueil-et-relation-client</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/salle_de_formation</image:loc>
+      <image:title>Accueil et relation client — Co.meet Space</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://comeetspace.com/formations/design-interieur</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/jhaaukjn/image/upload/f_jpg,q_80,w_1280/salle_de_formation</image:loc>
+      <image:title>Design d'Intérieur — Co.meet Space</image:title>
+    </image:image>
+  </url>
+
+</urlset>

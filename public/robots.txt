@@ -1,0 +1,86 @@
+# robots.txt — Co.meet Space
+# Centre de formation professionnelle · Sfax, Tunisie
+# https://comeetspace.com
+#
+# Canonical URL form has NO trailing slash (see src/lib/seo.ts).
+# /admin is auth-gated and noindex — keep crawlers away from it.
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+
+# ---------------------------------------------------------------------------
+# Search engine crawlers
+# ---------------------------------------------------------------------------
+User-agent: Googlebot
+Allow: /
+Disallow: /admin
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+
+User-agent: DuckDuckBot
+Allow: /
+Disallow: /admin
+
+User-agent: Slurp
+Allow: /
+Disallow: /admin
+
+# ---------------------------------------------------------------------------
+# AI / LLM crawlers (AIO / GEO)
+# Public pages are explicitly allowed so assistants can cite the catalogue.
+# ---------------------------------------------------------------------------
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+
+User-agent: Claude-Web
+Allow: /
+Disallow: /admin
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /admin
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /admin
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin
+
+User-agent: CCBot
+Allow: /
+Disallow: /admin
+
+User-agent: meta-externalagent
+Allow: /
+Disallow: /admin
+
+# ---------------------------------------------------------------------------
+# Sitemap
+# ---------------------------------------------------------------------------
+Sitemap: https://comeetspace.com/sitemap.xml

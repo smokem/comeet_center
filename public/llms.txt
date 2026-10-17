@@ -1,0 +1,66 @@
+# Co.meet Space
+
+> Centre de formation professionnelle à Sfax, Tunisie — formations courtes en management, communication, numérique, bureautique et design. Groupes de 15 personnes maximum, formateurs praticiens, sessions en présentiel, hybride ou en ligne.
+
+Co.meet Space est un centre de formation professionnelle situé Route de Mahdia Km 5,5, 3011 Sfax, Tunisie. Le centre propose des formations courtes (7 à 21 heures) animées par des formateurs qui exercent encore leur métier. Les groupes sont limités à 15 participants maximum et une attestation de formation est délivrée sous 48 heures. Le centre dispose de 400 m² avec 3 salles de formation, une bibliothèque professionnelle, un espace de coworking et un espace de repos, ouverts toute la journée.
+
+## Informations pratiques
+
+- Site web : https://comeetspace.com
+- Téléphone / WhatsApp : +216 92 489 103
+- E-mail : contact@comeetspace.com
+- Adresse : Route de Mahdia Km 5,5, 3011 Sfax, Tunisie
+- Localisation : Sfax, Tunisie (Google Maps : « CoMeetSpace »)
+- Horaires : Lundi – samedi 8 h 30 – 22 h · Dimanche 8 h 30 – 17 h
+- Langue : Français
+- Formats : présentiel (Sfax), hybride, en ligne
+- Niveaux : Débutant, Intermédiaire, Avancé
+- Catégories : Management, Communication, Numérique, Bureautique, Design
+- Taille des groupes : 15 participants maximum
+- Sur mesure : formations intra-entreprise et programmes personnalisés sur devis
+
+## Pages principales
+
+- [Accueil](https://comeetspace.com): présentation du centre, formations phares et parcours d'inscription en 4 étapes.
+- [Catalogue des formations](https://comeetspace.com/formations): toutes les formations, filtrables par catégorie, niveau et format.
+- [À propos](https://comeetspace.com/a-propos): le centre, l'espace de 400 m², les 3 salles de formation et la pédagogie.
+- [Contact](https://comeetspace.com/contact): formulaire de contact, adresse et horaires d'ouverture.
+
+## Formations
+
+- [Manager une équipe hybride](https://comeetspace.com/formations/management-equipe-hybride): Management · Intermédiaire · Hybride · 21 h · 1 450 TND. Structurer le travail à distance, rituels d'équipe et pilotage par les résultats.
+- [Prise de parole en public](https://comeetspace.com/formations/prise-de-parole-en-public): Communication · Débutant · Présentiel · 14 h · 890 TND. Aisance à l'oral, structuration du message et gestion du trac.
+- [IA générative au quotidien](https://comeetspace.com/formations/ia-generative-au-quotidien): Numérique · Débutant · En ligne · 7 h · 490 TND. Usage professionnel des assistants IA, consignes efficaces et confidentialité.
+- [Gestion de projet agile](https://comeetspace.com/formations/gestion-de-projet-agile): Management · Intermédiaire · Présentiel · 21 h · 1 590 TND. Cadrage, priorisation et livraison par itérations.
+- [Excel avancé et tableaux de bord](https://comeetspace.com/formations/bureautique-avancee-excel): Bureautique · Avancé · Hybride · 14 h · 780 TND. Formules matricielles, tableaux croisés et Power Query.
+- [Accueil et relation client](https://comeetspace.com/formations/accueil-et-relation-client): Communication · Débutant · Présentiel · 7 h · 420 TND. Accueil physique et téléphonique, écoute active et gestion des réclamations.
+- [Design d'Intérieur](https://comeetspace.com/formations/design-interieur): Design · Intermédiaire · Présentiel. AutoCAD, SketchUp, Lumion et IA pour la conception d'espaces. Tarif sur demande.
+
+Les prochaines sessions (dates, ville et places restantes) sont indiquées sur chaque page de formation.
+
+## Questions fréquentes
+
+- **Où se trouve Co.meet Space ?** Route de Mahdia Km 5,5, 3011 Sfax, Tunisie.
+- **Quels sont les horaires d'ouverture ?** Lundi – samedi 8 h 30 – 22 h, dimanche 8 h 30 – 17 h.
+- **Comment s'inscrire à une formation ?** Par téléphone ou WhatsApp au +216 92 489 103, ou via le formulaire de contact.
+- **Les formations sont-elles disponibles en ligne ?** Oui : présentiel à Sfax, hybride ou entièrement en ligne, selon la formation.
+- **Dans quels domaines proposez-vous des formations ?** Management, communication, numérique, bureautique et design, pour les niveaux Débutant, Intermédiaire et Avancé.
+- **Combien de participants par session ?** 15 participants maximum.
+- **Qui sont les formateurs ?** Des praticiens qui exercent encore leur métier et apportent des cas réels.
+- **Proposez-vous des formations intra-entreprise ou sur mesure ?** Oui, sur devis via +216 92 489 103 ou contact@comeetspace.com.
+
+## Le centre en images
+
+Photos du lieu (Cloudinary, format optimisé) :
+
+- Accueil du centre : https://res.cloudinary.com/jhaaukjn/image/upload/f_auto,q_auto,w_1280/accueil-du-centre
+- Salle de formation : https://res.cloudinary.com/jhaaukjn/image/upload/f_auto,q_auto,w_1280/salle_de_formation
+- Salle de réunion : https://res.cloudinary.com/jhaaukjn/image/upload/f_auto,q_auto,w_1280/salle-de-reunion
+- Espace de coworking : https://res.cloudinary.com/jhaaukjn/image/upload/f_auto,q_auto,w_1280/coworking-space
+- Bibliothèque : https://res.cloudinary.com/jhaaukjn/image/upload/f_auto,q_auto,w_1280/bibliotheque
+- Espace d'attente : https://res.cloudinary.com/jhaaukjn/image/upload/f_auto,q_auto,w_1280/espace-attente
+
+## Optional
+
+- [Sitemap XML](https://comeetspace.com/sitemap.xml)
+- [robots.txt](https://comeetspace.com/robots.txt)
